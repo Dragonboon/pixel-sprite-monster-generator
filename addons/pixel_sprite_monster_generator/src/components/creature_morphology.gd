@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Explicit, optional anatomy rules applied after cellular smoothing.
 ## Operates on the same x-major boolean map as MapGenerator.
-enum Archetype { ORIGINAL, BIPED, INSECTOID, SLIME, WINGED }
+enum Archetype { ORIGINAL, BIPED, INSECTOID, SLIME, WINGED, QUADRUPED, GOLEM, SPIRIT }
 
 
 static func apply(source: Array[Variant], archetype: Archetype, amount: float, seed_value: int, eyes: bool = false) -> Array[Variant]:
@@ -72,6 +72,21 @@ static func apply(source: Array[Variant], archetype: Archetype, amount: float, s
 				var wing_height: int = maxi(1, roundi(float(length + 2 - step) * 0.8))
 				for dy in wing_height:
 					_pair(result, left - step, wing_y - dy + step / 3, true)
+		Archetype.QUADRUPED:
+			for step in length + 1:
+				_pair(result, left - step, bottom - 3, true)
+			for leg_x in [middle - span_x / 4, middle + span_x / 4]:
+				for step in length + 1:
+					_write(result, leg_x, bottom + step, true)
+		Archetype.GOLEM:
+			for y in range(top + span_y / 3, bottom - 2):
+				for step in length + 2:
+					_pair(result, left - step, y, true)
+		Archetype.SPIRIT:
+			for x in range(left, right + 1):
+				var drift: int = posmod(x * 7 + seed_value, maxi(1, length + 1))
+				for y in range(bottom - drift, bottom + 1):
+					_write(result, x, y, false)
 		_:
 			pass
 	if eyes:
@@ -141,6 +156,20 @@ static func apply_profile(source: Array[Variant], archetype: Archetype, strength
 			for side in [-1, 1]:
 				_draw_segment(result, cx + side * (rx - 1), cy - ry / 2, cx + side * (rx + limb), cy - ry, 3)
 				_draw_segment(result, cx + side * (rx + limb), cy - ry, cx + side * (rx + limb / 2), cy + ry / 2, 2)
+		Archetype.QUADRUPED:
+			_draw_ellipse(result, cx, cy + ry / 3, rx + limb / 2, maxi(2, ry / 2))
+			_draw_ellipse(result, cx + rx / 2, cy - ry / 2, head, head)
+			for leg_x in [cx - rx / 2, cx + rx / 2]:
+				_draw_segment(result, leg_x, cy + ry / 2, leg_x, cy + ry + limb / 2, 3)
+		Archetype.GOLEM:
+			_draw_ellipse(result, cx, cy - ry, head + 1, head)
+			for side in [-1, 1]:
+				_draw_ellipse(result, cx + side * (rx + head / 2), cy, head, maxi(2, ry / 2))
+				_draw_segment(result, cx + side * (rx / 2), cy + ry - 1, cx + side * (rx / 2), cy + ry + limb / 2, 3)
+		Archetype.SPIRIT:
+			_draw_ellipse(result, cx, cy - ry / 2, rx, ry)
+			for side in [-1, 1]:
+				_draw_segment(result, cx + side * (rx / 2), cy + ry / 2, cx + side * (rx / 2 + 1), cy + ry + limb / 2, 1)
 	return result
 
 

@@ -47,6 +47,12 @@ static func evaluate(map: Array[Variant], archetype: CreatureMorphology.Archetyp
 			proportions = 0.75 * base_support + 0.25 * clampf(1.0 - float(top_count) / maxf(1.0, float(bottom_count + top_count)), 0.0, 1.0)
 		CreatureMorphology.Archetype.WINGED:
 			proportions = 0.7 * appendage_balance + 0.3 * clampf(float(left_count + right_count) / maxf(1.0, float(w) * 0.3), 0.0, 1.0)
+		CreatureMorphology.Archetype.QUADRUPED:
+			proportions = 0.55 * base_support + 0.45 * appendage_balance
+		CreatureMorphology.Archetype.GOLEM:
+			proportions = 0.65 * body_coverage + 0.35 * base_support
+		CreatureMorphology.Archetype.SPIRIT:
+			proportions = 0.7 * body_coverage + 0.3 * appendage_balance
 		_:
 			proportions = 0.5 * appendage_balance + 0.5 * base_support
 	return {"score": 100.0 * (0.40 * body_coverage + 0.60 * proportions), "body_coverage": body_coverage, "appendage_balance": appendage_balance, "base_support": base_support}
