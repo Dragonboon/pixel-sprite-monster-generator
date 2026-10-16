@@ -232,3 +232,9 @@ The demo now generates galleries incrementally in groups of four, exposes a prog
 `CreatureVariety.summarize(items)` annotates generated items with `novelty` and `near_duplicate` and returns counts of exact images, approximately unique **silhouettes**, near-duplicates, and average novelty. Its 12×12 normalized alpha-mask metric deliberately ignores color: recolors of the same shape count as the same silhouette. This is a diagnostic, not an artistic quality guarantee; the threshold can miss fine features. It **does not** reroll or reject sprites, so requested encounter counts remain exact.
 
 The benchmark estimates only retained image RGBA bytes, not Godot nodes, textures, the garbage collector or total process RSS. Wall-clock results depend on hardware and quality attempts, so compare on the target machine rather than assuming stable frame times. For critical gameplay use the chunked encounter API and moderate quality settings.
+
+## Quality and pipeline consolidation
+
+An encounter now reuses a single temporary generator rather than allocating one per 16-creature chunk. The normal in-scene generator still builds its image on `_ready()`; the private batch worker defers its first generation so the requested first seed is used exactly once. Synchronous and chunked asynchronous encounters continue to produce matching images with a fixed preset and seed. Unused anatomy metadata is cleared before generation, including when switching to the Original archetype.
+
+When quality filtering is enabled, geometric scoring now additionally penalizes silhouettes with multiple disconnected components or extremely sparse occupancy. These heuristics help reject accidental artifacts but cannot guarantee an attractive creature. **Note:** this recalibration may select a different candidate for existing seeds *when quality selection is enabled*; the original unfiltered mode still uses the historical path. Save your preset and version alongside exported seeds.

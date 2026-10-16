@@ -228,3 +228,9 @@ La galería de la demo genera progresivamente, cede un fotograma cada cuatro cri
 `CreatureVariety.summarize(items)` añade `novelty` y `near_duplicate` a los resultados y resume imágenes exactas, siluetas aproximadamente distintas, duplicados cercanos y novedad media. Compara máscaras de transparencia normalizadas a 12×12, ignorando la paleta: cambiar solo el color no aumenta la variedad de silueta. Se trata de una **métrica orientativa**, no de una evaluación artística. No descarta criaturas ni modifica la cantidad solicitada.
 
 La memoria indicada contabiliza únicamente los bytes RGBA de las imágenes, no los nodos, texturas, memoria total del proceso ni recolector de basura de Godot. Mide también en el hardware de destino y reduce calidad/intentos para generar enemigos durante el juego.
+
+## Consolidación de calidad y rendimiento
+
+Los encuentros ahora reutilizan un único generador temporal, evitando crear una instancia nueva cada 16 criaturas. El generador normal sigue creando su sprite en `_ready()`; solamente el trabajador interno aplaza su primera generación para utilizar la semilla solicitada exactamente una vez. Los encuentros síncronos y por tandas mantienen resultados equivalentes con un preset y semilla fijos. Se limpian los metadatos anatómicos entre generaciones, también al volver al arquetipo Original.
+
+Con el filtro de calidad activado, la puntuación geométrica penaliza adicionalmente las islas desconectadas y las siluetas excesivamente vacías. Son heurísticas para reducir resultados poco legibles, no una garantía de atractivo visual. **Importante:** la recalibración puede escoger otro candidato con una semilla antigua *si está activada la selección por calidad*; el modo sin filtrado conserva su comportamiento anterior. Guarda el preset y la versión junto con las semillas exportadas.
