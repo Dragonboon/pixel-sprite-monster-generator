@@ -199,6 +199,27 @@ func run() -> void:
 	generator.draw_sprite()
 	assert(generator.get_image().get_data() == effect_pixels)
 	assert(generator.export_png("user://styled-monster-test.png") == OK)
+	# Silhouette diagnostic separates visual duplicates from palette changes.
+	var v0 := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	v0.fill(Color.TRANSPARENT)
+	for y in range(4, 12):
+		for x in range(4, 12):
+			v0.set_pixel(x, y, Color.RED)
+	var v1: Image = v0.duplicate()
+	for y in range(4, 12):
+		for x in range(4, 12):
+			v1.set_pixel(x, y, Color.BLUE)
+	var v2 := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	v2.fill(Color.TRANSPARENT)
+	for y in range(4, 12):
+		for x in range(7, 9):
+			v2.set_pixel(x, y, Color.GREEN)
+	var silhouettes: Array[Dictionary] = [{"image": v0}, {"image": v1}, {"image": v2}]
+	var diversity: Dictionary = CreatureVariety.summarize(silhouettes)
+	assert(diversity["silhouette_unique"] == 2)
+	assert(diversity["near_duplicates"] == 1)
+	assert(diversity["exact_unique"] == 3)
+	assert(is_equal_approx(CreatureVariety.distance(CreatureVariety.signature(v0), CreatureVariety.signature(v1)), 0.0))
 	# Isolated batch generation does not mutate or delete the live preview.
 	var authoring := CreatureGenerationPreset.new()
 	authoring.quality_max_attempts = 2
