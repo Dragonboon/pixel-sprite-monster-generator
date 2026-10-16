@@ -183,3 +183,9 @@ print(monster.last_anatomy) # The sampled ratios of the latest candidate
 ```
 
 A null profile retains the pre-1.5 anatomy path. This is an initial connected-shape system, not pose estimation or anatomical validation; limbs may still need visual curation. Profile-enabled output is not pixel-identical to the pre-profile generator. The new changes also create a much greater luminance separation between Cozy (warm mid/high values) and Dungeon (cool, dark shadow masses).
+
+## Additional views and anatomy-aware selection
+
+The laboratory has Front, left/right 3/4, left/right Profile, Back (mirrored), and experimental Isometric 2D views. These are deterministic **image-space projections**, not distinct true 3D viewpoints or regenerated body anatomy. Existing front/3/4 scene values are retained. Use **Compare with Front** in the F5 gallery to view the selected projection beside its front-facing baseline at the same seed, mood, palette and silhouette. PNG export saves the selected view, not the comparison pair.
+
+With an optional `anatomy_profile`, quality selection now blends basic shape metrics (65%) with a heuristic anatomy score (35%). `last_anatomy_metrics` contains `score`, `body_coverage`, `appendage_balance`, and `base_support`. Metrics use the bounded sampled proportions and simple pixel counts, not true limb recognition. If no profile is supplied, the original quality metric remains unchanged. The gallery exposes an **Anatomy profile** checkbox and displays Q and A values to help compare candidates. A/B view comparison never rerolls the candidate seed.

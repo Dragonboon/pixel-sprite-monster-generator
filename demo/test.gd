@@ -23,6 +23,7 @@ var view_selector: OptionButton
 var active_style: int = 0
 var anatomy_profile: CreatureAnatomyProfile
 var anatomy_enabled: CheckBox
+var compare_views: CheckBox
 
 
 func _ready() -> void:
@@ -74,6 +75,10 @@ func _ready() -> void:
 	anatomy_enabled.text = "Anatomy profile"
 	anatomy_enabled.button_pressed = true
 	art_controls.add_child(anatomy_enabled)
+	compare_views = CheckBox.new()
+	compare_views.text = "Compare with Front"
+	compare_views.button_pressed = false
+	art_controls.add_child(compare_views)
 	var quality_label := Label.new()
 	quality_label.text = "Min quality"
 	art_controls.add_child(quality_label)
@@ -97,6 +102,7 @@ func _ready() -> void:
 	style_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	view_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	anatomy_enabled.toggled.connect(func(_v: bool) -> void: _regenerate())
+	compare_views.toggled.connect(func(_v: bool) -> void: _regenerate())
 	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	shade_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	var scroll := ScrollContainer.new()
@@ -163,13 +169,27 @@ func _regenerate() -> void:
 		var label := Label.new()
 		label.text = "%s · seed %d · Q %.0f · A %s" % [preset["name"], generator.last_seed, generator.last_quality_score, str(roundi(float(generator.last_anatomy_metrics.get("score", 0.0)))) if not generator.last_anatomy_metrics.is_empty() else "-"]
 		contents.add_child(label)
+		var preview_row := HBoxContainer.new()
+		contents.add_child(preview_row)
 		var preview := TextureRect.new()
 		preview.texture = ImageTexture.create_from_image(generated)
 		preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		preview.custom_minimum_size = Vector2(270, 168)
-		contents.add_child(preview)
+		preview.custom_minimum_size = Vector2(130, 168) if compare_views.button_pressed else Vector2(270, 168)
+		preview_row.add_child(preview)
+		if compare_views.button_pressed:
+			var selected_view: int = generator.view_mode
+			generator.view_mode = CreaturePixelEffects.View.FRONT
+			var baseline: Image = generator.get_image()
+			generator.view_mode = selected_view
+			var comparison := TextureRect.new()
+			comparison.texture = ImageTexture.create_from_image(baseline)
+			comparison.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			comparison.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			comparison.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			comparison.custom_minimum_size = Vector2(130, 168)
+			preview_row.add_child(comparison)
 		gallery.add_child(card)
 	status_label.text = "Four anatomy families plus original and an asymmetric biped. Export preserves pixel size."
 

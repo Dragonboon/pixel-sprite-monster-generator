@@ -179,3 +179,9 @@ print(monstruo.last_anatomy) # Proporciones muestreadas
 ```
 
 El perfil nulo conserva el funcionamiento anterior. Este sistema inicial construye formas conectadas, pero todavía requiere selección visual de semillas; no garantiza una anatomía exacta. La nueva opción cambia los píxeles respecto al generador previo. Cozy y Dungeon también cuentan ahora con separación más marcada entre luminosidades cálidas y sombras frías.
+
+## Vistas adicionales y puntuación anatómica
+
+La demo incorpora vistas Front, 3/4 a izquierda y derecha, perfiles laterales, Back (reflejo) e Isometric 2D experimental. Son **proyecciones de imagen**, no rotaciones reales de una criatura 3D ni una reconstrucción de su anatomía. Se mantienen los valores guardados de Front y 3/4. Activa **Compare with Front** para comparar en paralelo la vista seleccionada con su frontal, usando idéntica semilla, silueta, mood y paleta. La exportación guarda únicamente la vista seleccionada.
+
+Cuando existe `anatomy_profile`, la puntuación de calidad combina geometría general (65 %) y anatomía heurística (35 %). Consulta `last_anatomy_metrics`: `score`, `body_coverage`, `appendage_balance` y `base_support`. Son aproximaciones basadas en píxeles, no un reconocimiento semántico de extremidades. Sin perfil, se mantiene la métrica anterior. La galería dispone del interruptor **Anatomy profile** y muestra los valores Q y A. La comparación A/B no cambia la semilla generada.
