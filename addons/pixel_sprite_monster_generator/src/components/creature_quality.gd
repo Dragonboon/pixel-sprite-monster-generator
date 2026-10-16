@@ -29,11 +29,13 @@ static func measure(map: Array[Variant]) -> Dictionary:
 	var occupancy: float = float(count) / float(body_width * body_height)
 	var visited: Dictionary = {}
 	var largest: int = 0
+	var components: int = 0
 	for x in width:
 		for y in height:
 			var start := Vector2i(x, y)
 			if not map[x][y] or visited.has(start):
 				continue
+			components += 1
 			var stack: Array[Vector2i] = [start]
 			visited[start] = true
 			var area: int = 0
@@ -55,4 +57,7 @@ static func measure(map: Array[Variant]) -> Dictionary:
 	var occupancy_fitness: float = clampf(1.0 - absf(occupancy - 0.55) / 0.55, 0.0, 1.0)
 	var center_fitness: float = clampf(1.0 - absf(sum_x / float(count) - float(width - 1) * 0.5) / maxf(1.0, float(width) * 0.5), 0.0, 1.0)
 	var score: float = 100.0 * (0.22 * horizontal_extent + 0.22 * vertical_extent + 0.18 * occupancy_fitness + 0.30 * connected_ratio + 0.08 * center_fitness)
-	return {"score": score, "occupied": count, "width": body_width, "height": body_height, "connected_ratio": connected_ratio}
+	var density_floor: float = smoothstep(0.06, 0.24, occupancy)
+	var fragmentation_penalty: float = 1.0 - 0.22 * clampf(float(maxi(0, components - 1)) / 6.0, 0.0, 1.0)
+	score *= density_floor * fragmentation_penalty
+	return {"score": score, "occupied": count, "width": body_width, "height": body_height, "connected_ratio": connected_ratio, "components": components, "occupancy": occupancy}
