@@ -84,7 +84,7 @@ hasta la siguiente generación.
 
 ## Compatibilidad y pruebas
 
-La versión **1.3.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
+La versión **1.4.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
 
 ```sh
 python3 scripts/run_tests.py --godot /ruta/a/godot
@@ -130,3 +130,31 @@ La morfología se aplica después del suavizado celular y antes del color. No mo
 ### Demo y límites
 
 Pulsa **F5** para ver seis variantes, cambiar la semilla y exportar PNG a `user://`. La galería queda fuera de `addons/`. No produce esqueletos, animaciones diseñadas a mano ni mallas semánticas; en cuadrículas pequeñas pueden recortarse antenas o alas.
+
+## Selección de calidad y acabado artístico (1.4)
+
+Activa **Quality Enabled** para explorar hasta **Quality Max Attempts** (1–32) variantes deterministas, conservando la mejor. **Quality Min Score** (0–100) establece el objetivo. Consulta `last_quality_score`, `last_quality_attempts`, `quality_accepted` y `last_seed`. La puntuación mide rasgos geométricos (tamaño, ocupación y conectividad), **no garantiza calidad estética**. Si ninguna variante alcanza el umbral, se conserva la mejor con `quality_accepted = false`. Por defecto está desactivado. Para repetir la búsqueda, guarda `manual_seed` y la configuración completa; `last_seed` identifica la variante finalmente elegida.
+
+**Silhouette Mood** funciona independientemente del arquetipo: **Normal** conserva la forma; **Cozy** reduce salientes; **Horror** añade irregularidades puntiagudas; **Epic** enfatiza corona y hombros.
+
+**Pixel Art Finish** permite estilos Classic, Handheld, JRPG, Dungeon, Cozy y Arcade. Añade sombreado por píxel, dithering en damero, glitch determinista opcional y una vista **Three Quarter** experimental por desplazamiento de filas. No genera geometría isométrica real. Los efectos operan en resolución nativa, sin interpolación. El PNG mantiene la cuadrícula. La animación original por grupos sigue dibujando con el renderizador antiguo; si necesitas mostrar el nuevo acabado en tu juego, utiliza una textura obtenida con `get_image()` y filtrado nearest-neighbor.
+
+```gdscript
+monstruo.randomize_seed = false
+monstruo.manual_seed = 4433
+monstruo.quality_enabled = true
+monstruo.quality_min_score = 72.0
+monstruo.quality_max_attempts = 12
+monstruo.silhouette_mood = CreatureMood.Mood.COZY
+monstruo.creature_archetype = CreatureMorphology.Archetype.SLIME
+monstruo.visual_style = CreaturePixelEffects.Style.JRPG
+monstruo.shading_strength = 0.7
+monstruo.dithering_strength = 0.2
+monstruo.cell_animation = false
+monstruo.draw_sprite()
+var imagen := monstruo.get_image()
+$Sprite2D.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+$Sprite2D.texture = ImageTexture.create_from_image(imagen)
+```
+
+La demo F5 permite ajustar mood, estilo, umbral, sombreado y vista. Cada tarjeta muestra semilla y puntuación. **Export six PNGs** guarda las seis imágenes de la galería en `user://`. Conviene limitar los reintentos cuando la generación se ejecuta en dispositivos móviles.

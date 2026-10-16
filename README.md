@@ -83,7 +83,7 @@ the generated drawing; after clearing, `get_image()` returns `null` until regene
 
 ## Compatibility and validation
 
-Version **1.3.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
+Version **1.4.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
 
 ```sh
 python3 scripts/run_tests.py --godot /path/to/godot
@@ -133,3 +133,32 @@ Run **F5** to inspect Original, Biped, Insectoid, Slime, Winged and an asymmetri
 ### Procedural quality limits
 
 This creates fast, editable **sprite silhouettes**, not handcrafted anatomy, skeletal animation or semantic meshes. Small grids may clip antennae and wings; increasing sprite size and filtering candidate seeds improves readability. The generated body still uses the existing noise-based palette and optional cell-group animation.
+
+## Quality selection and artistic finish (1.4)
+
+Enable **Quality Enabled** in the Inspector for a bounded deterministic search over procedural candidates. **Quality Min Score** (0–100) sets the desired heuristic threshold; **Quality Max Attempts** (1–32) limits work per call. The generator keeps the best candidate found and reports `last_quality_score`, `last_quality_attempts`, `quality_accepted`, and `last_seed`. A score is a geometric heuristic, not an objective assessment of artistic quality. If the threshold cannot be met, the best candidate is retained and `quality_accepted` is false. A fixed manual seed always recreates the same search, and the game-wide random generator is not modified. Quality selection defaults to off for backwards compatibility. Save the original `manual_seed`, plus all settings, to replay an entire search; `last_seed` identifies the selected candidate, rather than the search's starting point.
+
+**Silhouette Mood** changes contour direction independently of the anatomy family: **Normal** preserves the original map, **Cozy** smooths isolated protrusions, **Horror** introduces thin jagged growth, and **Epic** emphasizes paired crown and shoulder extensions.
+
+The **Pixel Art Finish** section supports Classic, Handheld, JRPG, Dungeon, Cozy and Arcade colors, plus CPU-based directional pixel shading, checker dithering, optional seeded glitch and **Three Quarter** experimental shearing. All effects operate at native pixel resolution without interpolation. They do not generate genuine 3D volume or true isometric anatomy. The preview UI uses nearest-neighbor filtering, and PNG export preserves the native grid. Animated cell groups still draw with the original live renderer; use `get_image()` or a `Sprite2D` made from `get_image()` to show the styled result in-game.
+
+```gdscript
+monster.randomize_seed = false
+monster.manual_seed = 4433
+monster.quality_enabled = true
+monster.quality_min_score = 72.0
+monster.quality_max_attempts = 12
+monster.silhouette_mood = CreatureMood.Mood.COZY
+monster.creature_archetype = CreatureMorphology.Archetype.SLIME
+monster.visual_style = CreaturePixelEffects.Style.JRPG
+monster.shading_strength = 0.7
+monster.dithering_strength = 0.2
+monster.cell_animation = false
+monster.draw_sprite()
+var image := monster.get_image()
+var texture := ImageTexture.create_from_image(image)
+$Sprite2D.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+$Sprite2D.texture = texture
+```
+
+The F5 laboratory now exposes mood, style, quality threshold, shading and a front/3/4 comparison. Each gallery card reports the selected seed and measured score. **Export six PNGs** saves precisely the displayed pixel images under `user://`. Quality filtering is intended for batch authoring; keep its attempt budget low for runtime generation on mobile devices.
