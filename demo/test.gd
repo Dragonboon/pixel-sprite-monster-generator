@@ -24,6 +24,14 @@ var active_style: int = 0
 var anatomy_profile: CreatureAnatomyProfile
 var anatomy_enabled: CheckBox
 var compare_views: CheckBox
+var count_input: SpinBox
+var family_selector: OptionButton
+var preset_selector: OptionButton
+var favorites_only: CheckBox
+var saved_favorites: Dictionary = {}
+var current_items: Array[Dictionary] = []
+var current_preset: CreatureGenerationPreset
+var export_button: Button
 
 
 func _ready() -> void:
@@ -56,7 +64,29 @@ func _ready() -> void:
 	controls.add_child(seed_input)
 	_add_button(controls, "Generate gallery", _regenerate)
 	_add_button(controls, "New seed", _new_seed)
-	_add_button(controls, "Export six PNGs", _export_gallery)
+	count_input = SpinBox.new()
+	count_input.min_value = 1
+	count_input.max_value = CreatureBatchGenerator.MAX_ENCOUNTER_ITEMS
+	count_input.step = 1
+	count_input.rounded = true
+	count_input.value = 6
+	count_input.tooltip_text = "Exactly 1–128 creatures"
+	controls.add_child(count_input)
+	export_button = Button.new()
+	export_button.text = "Export selected PNGs + JSON"
+	export_button.pressed.connect(_export_gallery)
+	controls.add_child(export_button)
+	family_selector = OptionButton.new()
+	for family in ["Mixed families", "Original", "Biped", "Insectoid", "Slime", "Winged", "Quadruped", "Golem", "Spirit"]:
+		family_selector.add_item(family)
+	controls.add_child(family_selector)
+	preset_selector = OptionButton.new()
+	for option in ["Custom controls", "Cozy Slime", "Dungeon Insectoid"]:
+		preset_selector.add_item(option)
+	controls.add_child(preset_selector)
+	favorites_only = CheckBox.new()
+	favorites_only.text = "Favorites only"
+	controls.add_child(favorites_only)
 	var art_controls := HBoxContainer.new()
 	layout.add_child(art_controls)
 	mood_selector = OptionButton.new()
@@ -105,6 +135,10 @@ func _ready() -> void:
 	compare_views.toggled.connect(func(_v: bool) -> void: _regenerate())
 	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	shade_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
+	family_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
+	preset_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
+	count_input.value_changed.connect(func(_v: float) -> void: _regenerate())
+	favorites_only.toggled.connect(func(_v: bool) -> void: _render_gallery())
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
@@ -131,75 +165,133 @@ func _new_seed() -> void:
 
 
 func _regenerate() -> void:
+	current_items.clear()
+	rendered_images.clear()
+	var requested: int = int(count_input.value)
+	var initial_seed: int = int(seed_input.value)
+	var started: int = Time.get_ticks_usec()
+	var all_presets: Array[CreatureGenerationPreset] = []
+	for index in requested:
+		var preset := _build_preset(index)
+		all_presets.append(preset)
+	var tasks: Array[Dictionary] = []
+	# Mixed archetypes retain different anatomy for each member, while batches
+	# with a fixed family use the stable public RPG encounter API.
+	if family_selector.selected > 0 or preset_selector.selected > 0:
+		var encounter: Dictionary = await CreatureBatchGenerator.generate_encounter_async(all_presets[0], self, requested, initial_seed, CreatureBatchGenerator.DEFAULT_SEED_STEP, 4)
+		if encounter["error"] != OK:
+			_show_status("Generation failed: " + error_string(int(encounter["error"])), true)
+			return
+		tasks = encounter["items"]
+	else:
+		for index in requested:
+			var piece: Dictionary = CreatureBatchGenerator.generate_encounter(all_presets[index], self, 1, initial_seed + index * CreatureBatchGenerator.DEFAULT_SEED_STEP)
+			if piece["error"] != OK or piece["generated_count"] != 1:
+				_show_status("Generation failed for creature %d" % [index + 1], true)
+				return
+			var item: Dictionary = piece["items"][0]
+			item["index"] = index
+			tasks.append(item)
+	current_items = tasks
+	for item in current_items:
+		rendered_images.append(item["image"])
+	_render_gallery()
+	var elapsed: float = float(Time.get_ticks_usec() - started) / 1000.0
+	_show_status("Generated %d/%d creatures in %.0f ms (%.1f ms/creature). Select favorites or export." % [current_items.size(), requested, elapsed, elapsed / float(maxi(1, requested))], false)
+
+
+func _build_preset(index: int) -> CreatureGenerationPreset:
+	var preset: CreatureGenerationPreset
+	if preset_selector.selected == 1:
+		preset = load("res://demo/presets/cozy_slime.tres").duplicate(true) as CreatureGenerationPreset
+	elif preset_selector.selected == 2:
+		preset = load("res://demo/presets/dungeon_insectoid.tres").duplicate(true) as CreatureGenerationPreset
+	else:
+		preset = CreatureGenerationPreset.new()
+		var base: Dictionary = PRESETS[index % PRESETS.size()]
+		preset.sprite_size = base["size"]
+		preset.symmetry = float(base["symmetry"])
+		preset.steps = int(base["steps"])
+		preset.number_of_colors = int(base["colors"])
+		preset.organic_shape_strength = float(base["shape"])
+		preset.creature_archetype = base["anatomy"]
+		preset.anatomy_profile = anatomy_profile if anatomy_enabled.button_pressed else null
+		preset.silhouette_mood = mood_selector.selected
+		preset.visual_style = style_selector.selected
+		preset.view_mode = view_selector.selected
+		preset.shading_strength = shade_slider.value
+		preset.dithering_strength = 0.18
+		preset.quality_min_score = quality_slider.value
+		preset.quality_max_attempts = 8
+	if family_selector.selected > 0:
+		preset.creature_archetype = family_selector.selected - 1
+	return preset
+
+
+func _render_gallery() -> void:
 	for child in gallery.get_children():
 		gallery.remove_child(child)
 		child.queue_free()
-	rendered_images.clear()
-	var base_seed := int(seed_input.value)
-	for index in 6:
-		var preset: Dictionary = PRESETS[index]
-		generator.sprite_size = preset["size"]
-		generator.symmetry = float(preset["symmetry"])
-		generator.steps = int(preset["steps"])
-		generator.number_of_colors = int(preset["colors"])
-		generator.organic_shape_strength = float(preset["shape"])
-		generator.keep_largest_body = true
-		generator.creature_archetype = preset["anatomy"]
-		generator.anatomy_strength = 0.95
-		generator.facial_eyes = true
-		generator.anatomy_profile = anatomy_profile if anatomy_enabled.button_pressed else null
-		generator.silhouette_mood = mood_selector.selected
-		generator.quality_enabled = true
-		generator.quality_min_score = quality_slider.value
-		generator.quality_max_attempts = 8
-		generator.visual_style = style_selector.selected
-		generator.view_mode = view_selector.selected
-		generator.shading_strength = shade_slider.value
-		generator.dithering_strength = 0.18
-		generator.manual_seed = base_seed + index * 7919
-		generator.draw_sprite()
-		var generated: Image = generator.get_image()
-		if generated == null:
+	for item in current_items:
+		var index: int = int(item["index"])
+		var key: String = _favorite_key(item)
+		if favorites_only.button_pressed and not saved_favorites.has(key):
 			continue
-		rendered_images.append(generated)
 		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(285, 210)
+		card.custom_minimum_size = Vector2(265, 225)
 		var contents := VBoxContainer.new()
 		card.add_child(contents)
-		var label := Label.new()
-		label.text = "%s · seed %d · Q %.0f · A %s" % [preset["name"], generator.last_seed, generator.last_quality_score, str(roundi(float(generator.last_anatomy_metrics.get("score", 0.0)))) if not generator.last_anatomy_metrics.is_empty() else "-"]
-		contents.add_child(label)
-		var preview_row := HBoxContainer.new()
-		contents.add_child(preview_row)
+		var heading := HBoxContainer.new()
+		contents.add_child(heading)
+		var title := Label.new()
+		title.text = "#%d · seed %d · Q %.0f" % [index + 1, int(item["selected_seed"]), float(item["quality_score"])]
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		heading.add_child(title)
+		var favorite := CheckButton.new()
+		favorite.text = "★"
+		favorite.button_pressed = saved_favorites.has(key)
+		favorite.toggled.connect(func(enabled: bool) -> void:
+			if enabled:
+				saved_favorites[key] = true
+			else:
+				saved_favorites.erase(key)
+			if favorites_only.button_pressed:
+				_render_gallery()
+		)
+		heading.add_child(favorite)
 		var preview := TextureRect.new()
-		preview.texture = ImageTexture.create_from_image(generated)
+		preview.texture = ImageTexture.create_from_image(item["image"])
 		preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		preview.custom_minimum_size = Vector2(130, 168) if compare_views.button_pressed else Vector2(270, 168)
-		preview_row.add_child(preview)
-		if compare_views.button_pressed:
-			var selected_view: int = generator.view_mode
-			generator.view_mode = CreaturePixelEffects.View.FRONT
-			var baseline: Image = generator.get_image()
-			generator.view_mode = selected_view
-			var comparison := TextureRect.new()
-			comparison.texture = ImageTexture.create_from_image(baseline)
-			comparison.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			comparison.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			comparison.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			comparison.custom_minimum_size = Vector2(130, 168)
-			preview_row.add_child(comparison)
+		preview.custom_minimum_size = Vector2(250, 160)
+		contents.add_child(preview)
+		var metric := Label.new()
+		metric.text = "Anatomy %.0f · %.1f ms%s" % [float(item["anatomy_metrics"].get("score", 0.0)), float(item.get("elapsed_ms", 0.0)), "" if bool(item["quality_accepted"]) else " · best effort"]
+		contents.add_child(metric)
 		gallery.add_child(card)
-	status_label.text = "Four anatomy families plus original and an asymmetric biped. Export preserves pixel size."
+
+
+func _favorite_key(item: Dictionary) -> String:
+	return "%d_%d_%d" % [int(seed_input.value), int(item["index"]), int(item["selected_seed"])]
+
+
+func _show_status(message: String, failure: bool) -> void:
+	status_label.text = message
+	status_label.modulate = Color(1.0, 0.6, 0.6) if failure else Color(0.68, 0.95, 0.75)
 
 
 func _export_gallery() -> void:
-	var base_seed := int(seed_input.value)
-	for index in rendered_images.size():
-		var path := "user://monster_%d_%02d.png" % [base_seed, index + 1]
-		var error: Error = rendered_images[index].save_png(path)
-		if error != OK:
-			status_label.text = "Export failed: %s" % error_string(error)
-			return
-	status_label.text = "Saved %d images to %s" % [rendered_images.size(), ProjectSettings.globalize_path("user://")]
+	var selected: Array[Dictionary] = []
+	for item in current_items:
+		if not favorites_only.button_pressed or saved_favorites.has(_favorite_key(item)):
+			selected.append(item)
+	if selected.is_empty():
+		_show_status("Nothing to export. Uncheck Favorites only or mark a creature with ★.", true)
+		return
+	var folder: String = "user://creature_galleries/seed_%d" % int(seed_input.value)
+	var error: Error = CreatureBatchGenerator.export_pngs(selected, folder, "monster")
+	if error != OK:
+		_show_status("Export failed (%s): %s" % [error_string(error), folder], true)
+		return
+	_show_status("Saved %d PNGs + manifest JSON to %s" % [selected.size(), ProjectSettings.globalize_path(folder)], false)
