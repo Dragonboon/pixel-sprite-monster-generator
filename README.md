@@ -12,7 +12,7 @@ Generation creates artwork, not gameplay logic, collision shapes or authored ani
 ## Start in minutes
 
 1. Use **Godot 4.7.x**; automated checks pin **4.7.2 stable**.
-2. Copy `addons/ninetailsrabbit.pixel_sprite_monster_generator/` into your project's `addons/` directory, preserving the folder name.
+2. Copy `addons/pixel_sprite_monster_generator/` into your project's `addons/` directory, preserving the folder name.
 3. Enable the plugin in **Project → Project Settings → Plugins**.
 4. Add a `PixelSpriteMonsterGenerator` Node2D to a scene and run it.
 5. Adjust the size, palette, symmetry and cellular automata settings, then call `draw_sprite()` to regenerate.
@@ -78,10 +78,7 @@ the generated drawing; after clearing, `get_image()` returns `null` until regene
 
 ## Compatibility and validation
 
-Version **1.1.0** targets Godot 4.7. Existing addon and resource paths are retained.
-Seed output can differ from older versions because noise/color handling and RNG
-isolation were corrected. Repeatability applies to the same generator implementation
-and settings, not indefinitely across engine or algorithm upgrades.
+Version **1.1.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
 
 ```sh
 python3 scripts/run_tests.py --godot /path/to/godot
@@ -99,7 +96,7 @@ Linux automated tests do not certify Windows, macOS or mobile hardware behavior.
 ![Animated monster examples](images/animated_showcase.gif)
 
 Original visual algorithms by [Deep-Fold](https://github.com/Deep-Fold).
-Godot port originally published by Ninetailsrabbit, maintained in this repository.
+Godot port maintained by [sempitern0](https://github.com/sempitern0).
 See [LICENSE](LICENSE) and preserve applicable attribution when redistributing.
 
 [Report a problem](https://github.com/sempitern0/pixel-sprite-monster-generator/issues)

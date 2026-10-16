@@ -55,9 +55,9 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 @export var eye_color_value: float = 0.95
 @export_category("Color filler")
 ## This noise shapes the color fill using the generated palette
-@export var main_noise: FastNoiseLite = preload("res://addons/ninetailsrabbit.pixel_sprite_monster_generator/src/noises/main_noise.tres")
+@export var main_noise: FastNoiseLite = preload("res://addons/pixel_sprite_monster_generator/src/noises/main_noise.tres")
 ## This secondary noise shapes the color fill using the generated palette
-@export var secondary_noise: FastNoiseLite = preload("res://addons/ninetailsrabbit.pixel_sprite_monster_generator/src/noises/secondary_noise.tres")
+@export var secondary_noise: FastNoiseLite = preload("res://addons/pixel_sprite_monster_generator/src/noises/secondary_noise.tres")
 @export_category("Cellular automata")
 ## More the steps, more detailed the final result
 @export var steps: int = 4

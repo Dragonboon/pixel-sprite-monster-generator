@@ -10,7 +10,7 @@ config_version=5
 
 [Pixel-Sprite-Monster-Generator]
 
-config/ninetailsrabbit.pixel_sprite_monster_generator/update_notification_enabled=true
+config/pixel_sprite_monster_generator/update_notification_enabled=true
 
 [application]
 
@@ -24,7 +24,7 @@ config/icon="res://icon.svg"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/ninetailsrabbit.pixel_sprite_monster_generator/plugin.cfg")
+enabled=PackedStringArray("res://addons/pixel_sprite_monster_generator/plugin.cfg")
 
 [rendering]
 

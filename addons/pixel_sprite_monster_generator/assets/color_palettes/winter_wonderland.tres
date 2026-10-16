@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="PixelSpriteMonsterGeneratorColorPalette" load_steps=2 format=3 uid="uid://bdbgepqtir36m"]
 
-[ext_resource type="Script" uid="uid://cwani2o40nxnh" path="res://addons/ninetailsrabbit.pixel_sprite_monster_generator/assets/color_palettes/color_palette.gd" id="1_gw75i"]
+[ext_resource type="Script" uid="uid://cwani2o40nxnh" path="res://addons/pixel_sprite_monster_generator/assets/color_palettes/color_palette.gd" id="1_gw75i"]
 
 [resource]
 script = ExtResource("1_gw75i")

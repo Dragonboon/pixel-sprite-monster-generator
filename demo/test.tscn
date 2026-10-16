@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://01ptspjr6ajs"]
 
-[ext_resource type="Script" uid="uid://b242qko5rfp1c" path="res://addons/ninetailsrabbit.pixel_sprite_monster_generator/src/sprite_generator.gd" id="1_64tup"]
+[ext_resource type="Script" uid="uid://b242qko5rfp1c" path="res://addons/pixel_sprite_monster_generator/src/sprite_generator.gd" id="1_64tup"]
 [ext_resource type="Script" uid="uid://b3nkutmw8ial" path="res://demo/test.gd" id="1_ci45f"]
 
 [node name="Test" type="Control"]

@@ -12,7 +12,7 @@ Produce imágenes: no añade lógica de juego, colisiones ni animaciones diseña
 ## Primeros pasos
 
 1. Utiliza **Godot 4.7.x**. Las pruebas automáticas usan **4.7.2 estable**.
-2. Copia `addons/ninetailsrabbit.pixel_sprite_monster_generator/` a `addons/` de tu juego, conservando el nombre de la carpeta.
+2. Copia `addons/pixel_sprite_monster_generator/` a `addons/` de tu juego, conservando el nombre de la carpeta.
 3. Activa el complemento en **Proyecto → Ajustes del proyecto → Plugins**.
 4. Añade un nodo `PixelSpriteMonsterGenerator` a tu escena y ejecútala.
 5. Ajusta tamaño, colores, simetría y suavizado; llama a `draw_sprite()` para regenerar.
@@ -79,10 +79,7 @@ hasta la siguiente generación.
 
 ## Compatibilidad y pruebas
 
-La versión **1.1.0** se orienta a Godot 4.7 y conserva las rutas de recursos y del
-complemento. Los resultados de semillas anteriores pueden cambiar por las
-correcciones de ruido, color y aleatoriedad. La repetibilidad corresponde a la
-misma implementación y ajustes, no a cualquier actualización futura del motor.
+La versión **1.1.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
 
 ```sh
 python3 scripts/run_tests.py --godot /ruta/a/godot
@@ -100,7 +97,7 @@ en Linux no certifican el comportamiento de hardware Windows, macOS o móvil.
 ![Ejemplos de monstruos animados](images/animated_showcase.gif)
 
 Algoritmos originales de [Deep-Fold](https://github.com/Deep-Fold). Adaptación a
-Godot publicada originalmente por Ninetailsrabbit y mantenida aquí. Consulta
+Godot mantenida por [sempitern0](https://github.com/sempitern0). Consulta
 [LICENSE](LICENSE) y conserva las atribuciones aplicables al redistribuir.
 
 [Comunica un problema](https://github.com/sempitern0/pixel-sprite-monster-generator/issues)

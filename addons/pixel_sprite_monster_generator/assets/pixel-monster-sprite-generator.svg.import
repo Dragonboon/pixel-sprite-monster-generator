@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://blpohh2qyiiht"
-path="res://.godot/imported/pixel-monster-sprite-generator.svg-1daa2930dcdca4c23517b7d1d91c1fd1.ctex"
+path="res://.godot/imported/pixel-monster-sprite-generator.svg-ae0cb7c08fbb37aed8b0d7ea17138937.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://addons/ninetailsrabbit.pixel_sprite_monster_generator/assets/pixel-monster-sprite-generator.svg"
-dest_files=["res://.godot/imported/pixel-monster-sprite-generator.svg-1daa2930dcdca4c23517b7d1d91c1fd1.ctex"]
+source_file="res://addons/pixel_sprite_monster_generator/assets/pixel-monster-sprite-generator.svg"
+dest_files=["res://.godot/imported/pixel-monster-sprite-generator.svg-ae0cb7c08fbb37aed8b0d7ea17138937.ctex"]
 
 [params]
 

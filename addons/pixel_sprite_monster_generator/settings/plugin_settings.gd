@@ -1,7 +1,7 @@
 @tool
 class_name PixelSpriteMonsterGeneratorPluginSettings extends RefCounted
 
-const PluginPrefixName: String = "ninetailsrabbit.pixel_sprite_monster_generator" ## The folder name
+const PluginPrefixName: String = "pixel_sprite_monster_generator" ## The folder name
 const GitRepositoryName: String = "pixel-sprite-monster-generator"
 
 static var PluginName: String = "Pixel-Sprite-Monster-Generator"
@@ -9,7 +9,7 @@ static var PluginProjectName: String = ProjectSettings.get_setting("application/
 static var PluginBasePath: String = "res://addons/%s" % PluginPrefixName
 static var PluginLocalConfigFilePath = "%s/plugin.cfg" % PluginBasePath
 static var PluginSettingsBasePath: String = "%s/config/%s" % [PluginProjectName, PluginPrefixName]
-static var RemoteReleasesUrl = "https://api.github.com/repos/ninetailsrabbit/%s/releases" % GitRepositoryName
+static var RemoteReleasesUrl = "https://api.github.com/repos/sempitern0/%s/releases" % GitRepositoryName
 static var PluginTemporaryDirectoryPath = OS.get_user_data_dir() + "/" + PluginPrefixName
 static var PluginTemporaryReleaseUpdateDirectoryPath = "%s/update" % PluginTemporaryDirectoryPath
 static var PluginTemporaryReleaseFilePath = "%s/%s.zip" % [PluginTemporaryDirectoryPath, PluginPrefixName]
