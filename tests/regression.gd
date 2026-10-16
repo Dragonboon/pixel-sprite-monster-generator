@@ -137,6 +137,17 @@ func run() -> void:
 	assert(generator.quality_accepted and generator.last_quality_attempts == 1)
 	generator.quality_enabled = false
 	generator.silhouette_mood = CreatureMood.Mood.NORMAL
+	# Pixel effects preserve logical resolution and deterministic CPU-only PNG exports.
+	generator.visual_style = CreaturePixelEffects.Style.HANDHELD
+	generator.view_mode = CreaturePixelEffects.View.THREE_QUARTER
+	generator.shading_strength = 0.75
+	generator.dithering_strength = 0.3
+	generator.glitch_strength = 0.2
+	generator.draw_sprite()
+	var effect_pixels: PackedByteArray = generator.get_image().get_data()
+	generator.draw_sprite()
+	assert(generator.get_image().get_data() == effect_pixels)
+	assert(generator.export_png("user://styled-monster-test.png") == OK)
 	generator.clear()
 	assert(is_instance_valid(authored))
 	assert(generator.get_image() == null)

@@ -23,6 +23,12 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 @export var facial_eyes: bool = false
 @export_category("Art Direction")
 @export var silhouette_mood: CreatureMood.Mood = CreatureMood.Mood.NORMAL
+@export_category("Pixel Art Finish")
+@export var visual_style: CreaturePixelEffects.Style = CreaturePixelEffects.Style.CLASSIC
+@export var view_mode: CreaturePixelEffects.View = CreaturePixelEffects.View.FRONT
+@export_range(0.0, 1.0, 0.05) var shading_strength: float = 0.0
+@export_range(0.0, 1.0, 0.05) var dithering_strength: float = 0.0
+@export_range(0.0, 1.0, 0.05) var glitch_strength: float = 0.0
 @export_category("Quality Selection")
 ## Disabled by default to keep all existing seed outputs identical.
 @export var quality_enabled: bool = false
@@ -254,6 +260,8 @@ func get_image() -> Image:
 			if drawer.is_eye and center.distance_to(cell.position) < eye_radius:
 				color = color.darkened(0.85)
 			result.set_pixelv(point, color)
+	if visual_style != CreaturePixelEffects.Style.CLASSIC or view_mode != CreaturePixelEffects.View.FRONT or shading_strength > 0.0 or dithering_strength > 0.0 or glitch_strength > 0.0:
+		return CreaturePixelEffects.process(result, visual_style, view_mode, shading_strength, dithering_strength, glitch_strength, last_seed)
 	return result
 
 

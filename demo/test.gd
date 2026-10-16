@@ -15,6 +15,12 @@ var seed_input: SpinBox
 var status_label: Label
 var rendered_images: Array[Image] = []
 var random_source := RandomNumberGenerator.new()
+var mood_selector: OptionButton
+var style_selector: OptionButton
+var quality_slider: HSlider
+var shade_slider: HSlider
+var view_selector: OptionButton
+var active_style: int = 0
 
 
 func _ready() -> void:
@@ -47,6 +53,44 @@ func _ready() -> void:
 	_add_button(controls, "Generate gallery", _regenerate)
 	_add_button(controls, "New seed", _new_seed)
 	_add_button(controls, "Export six PNGs", _export_gallery)
+	var art_controls := HBoxContainer.new()
+	layout.add_child(art_controls)
+	mood_selector = OptionButton.new()
+	for item in ["Normal", "Cozy", "Horror", "Epic"]:
+		mood_selector.add_item(item)
+	art_controls.add_child(mood_selector)
+	style_selector = OptionButton.new()
+	for item in ["Classic", "Handheld", "JRPG", "Dungeon", "Cozy", "Arcade"]:
+		style_selector.add_item(item)
+	art_controls.add_child(style_selector)
+	view_selector = OptionButton.new()
+	for item in ["Front", "3/4 experimental"]:
+		view_selector.add_item(item)
+	art_controls.add_child(view_selector)
+	var quality_label := Label.new()
+	quality_label.text = "Min quality"
+	art_controls.add_child(quality_label)
+	quality_slider = HSlider.new()
+	quality_slider.min_value = 0
+	quality_slider.max_value = 95
+	quality_slider.value = 70
+	quality_slider.custom_minimum_size.x = 105
+	art_controls.add_child(quality_slider)
+	var shade_label := Label.new()
+	shade_label.text = "Shading"
+	art_controls.add_child(shade_label)
+	shade_slider = HSlider.new()
+	shade_slider.min_value = 0
+	shade_slider.max_value = 1
+	shade_slider.step = 0.05
+	shade_slider.value = 0.65
+	shade_slider.custom_minimum_size.x = 105
+	art_controls.add_child(shade_slider)
+	mood_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
+	style_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
+	view_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
+	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
+	shade_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
@@ -89,6 +133,14 @@ func _regenerate() -> void:
 		generator.creature_archetype = preset["anatomy"]
 		generator.anatomy_strength = 0.95
 		generator.facial_eyes = true
+		generator.silhouette_mood = mood_selector.selected
+		generator.quality_enabled = true
+		generator.quality_min_score = quality_slider.value
+		generator.quality_max_attempts = 8
+		generator.visual_style = style_selector.selected
+		generator.view_mode = view_selector.selected
+		generator.shading_strength = shade_slider.value
+		generator.dithering_strength = 0.18
 		generator.manual_seed = base_seed + index * 7919
 		generator.draw_sprite()
 		var generated: Image = generator.get_image()
@@ -100,7 +152,7 @@ func _regenerate() -> void:
 		var contents := VBoxContainer.new()
 		card.add_child(contents)
 		var label := Label.new()
-		label.text = "%s  ·  seed %d" % [preset["name"], generator.manual_seed]
+		label.text = "%s  ·  seed %d  ·  Q %.0f" % [preset["name"], generator.last_seed, generator.last_quality_score]
 		contents.add_child(label)
 		var preview := TextureRect.new()
 		preview.texture = ImageTexture.create_from_image(generated)
