@@ -17,7 +17,7 @@ Generation creates artwork, not gameplay logic, collision shapes or authored ani
 4. Add a `PixelSpriteMonsterGenerator` Node2D to a scene and run it.
 5. Adjust the size, palette, symmetry and cellular automata settings, then call `draw_sprite()` to regenerate.
 
-Open `demo/test.tscn`, or press **F5** in this repository, for a regeneration example.
+Open `demo/test.tscn`, or press **F5**, for an interactive six-monster gallery with three silhouette archetypes, reseeding and PNG batch export.
 Monster preview is runtime-only; the editor does not generate a preview automatically.
 
 ## Reproducible variations
@@ -46,6 +46,8 @@ does not modify noise resources shared with other instances.
 | Sprite Draw Size | Display scale; does not change the exported pixel grid |
 | Pixel Perfect | Draws each cell as one pixel, ignoring display scaling |
 | Symmetry | 100 gives a mirrored silhouette; lower values introduce variation |
+| Organic Shape Strength | Optional irregular elliptical trimming (0 preserves the original result) |
+| Keep Largest Body | Optional removal of detached fragments after cellular smoothing |
 | Steps / Birth Limit / Death Limit | Cellular automata smoothing; steps are limited to 0–20 |
 | Number of Colors | Generated palette size, normalized to 1–64 |
 | Custom Color Palette | `PixelSpriteMonsterGeneratorColorPalette`; nonempty palettes override generated body/eye palettes |
@@ -78,7 +80,7 @@ the generated drawing; after clearing, `get_image()` returns `null` until regene
 
 ## Compatibility and validation
 
-Version **1.1.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
+Version **1.2.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
 
 ```sh
 python3 scripts/run_tests.py --godot /path/to/godot
@@ -86,7 +88,7 @@ python3 scripts/run_tests.py --godot /path/to/godot
 python3 scripts/run_tests.py --godot /path/to/godot --render
 ```
 
-Checks cover script loading, repeated regeneration, authored child preservation,
+Checks cover optional shape cleanup/replay, script loading, repeated regeneration, authored child preservation,
 random-stream isolation, fixed/random seed replay, scale, odd-sized symmetry,
 one-color palettes, independent eye colors, invalid sizes and PNG round trips.
 Linux automated tests do not certify Windows, macOS or mobile hardware behavior.

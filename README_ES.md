@@ -17,7 +17,7 @@ Produce imágenes: no añade lógica de juego, colisiones ni animaciones diseña
 4. Añade un nodo `PixelSpriteMonsterGenerator` a tu escena y ejecútala.
 5. Ajusta tamaño, colores, simetría y suavizado; llama a `draw_sprite()` para regenerar.
 
-Abre `demo/test.tscn`, o pulsa **F5** en este repositorio, para probar la regeneración.
+Abre `demo/test.tscn` o pulsa **F5** para explorar seis monstruos, tres tipos de silueta, nuevas semillas y exportación PNG por lotes.
 La vista del monstruo se genera al ejecutar; no hay previsualización automática en el editor.
 
 ## Variaciones reproducibles
@@ -46,6 +46,8 @@ hijos de tu juego y no altera su aleatoriedad ni los recursos de ruido compartid
 | Sprite Draw Size | Escala de visualización; no modifica la resolución del PNG |
 | Pixel Perfect | Dibuja cada celda como un píxel, ignorando la escala de visualización |
 | Symmetry | 100 crea una silueta reflejada; valores menores introducen variación |
+| Organic Shape Strength | Recorta el contorno de forma irregular; 0 conserva el resultado original |
+| Keep Largest Body | Elimina fragmentos desconectados después del autómata celular |
 | Steps / Birth Limit / Death Limit | Suavizado mediante autómata celular; entre 0 y 20 pasos |
 | Number of Colors | Paleta generada de 1–64 colores |
 | Custom Color Palette | Recurso `PixelSpriteMonsterGeneratorColorPalette`; una paleta no vacía sustituye los colores generados de cuerpo y ojos |
@@ -79,7 +81,7 @@ hasta la siguiente generación.
 
 ## Compatibilidad y pruebas
 
-La versión **1.1.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
+La versión **1.2.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
 
 ```sh
 python3 scripts/run_tests.py --godot /ruta/a/godot

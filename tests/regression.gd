@@ -81,6 +81,16 @@ func run() -> void:
 	assert(png.get_size() == Vector2i(50, 50) and not png.is_invisible())
 	assert(png.get_data() == generator.get_image().get_data())
 	print("Exported: ", ProjectSettings.globalize_path("user://monster-test.png"))
+	# Opt-in shape cleanup and deterministic regeneration.
+	var fragments: Array[Variant] = [[true, true, false], [false, false, false], [false, false, true]]
+	var cleaned := SilhouetteRefiner.refine(fragments, 0.0, true)
+	assert(cleaned[0][0] and cleaned[0][1] and not cleaned[2][2])
+	generator.organic_shape_strength = 0.65
+	generator.keep_largest_body = true
+	generator.draw_sprite()
+	var organic_pixels: PackedByteArray = generator.get_image().get_data()
+	generator.draw_sprite()
+	assert(generator.get_image().get_data() == organic_pixels)
 	generator.clear()
 	assert(is_instance_valid(authored))
 	assert(generator.get_image() == null)

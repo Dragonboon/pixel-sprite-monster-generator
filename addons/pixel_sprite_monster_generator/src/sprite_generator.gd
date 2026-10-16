@@ -9,6 +9,11 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 ## When pixel perfect it's enabled, the final result will be more 'pixelated' and squared
 @export var pixel_perfect: bool = false
 @export var outlined: bool = true
+@export_category("Silhouette")
+## Zero preserves the original procedural output. Higher values trim organic contours.
+@export_range(0.0, 1.0, 0.05) var organic_shape_strength: float = 0.0
+## Optional removal of detached filled islands after cellular smoothing.
+@export var keep_largest_body: bool = false
 ## The number of colors to generate the sprie palette
 @export var number_of_colors: int = 12:
 	set(value):
@@ -105,6 +110,8 @@ func draw_sprite() -> void:
 
 	var map: Array[Variant] = map_generator.generate_new(sprite_size, symmetry)
 	map = cellular_automata.do_steps(map)
+	if organic_shape_strength > 0.0 or keep_largest_body:
+		map = SilhouetteRefiner.refine(map, organic_shape_strength, keep_largest_body, symmetry)
 	
 	var custom_color_palette_exists: bool = custom_color_palette != null and custom_color_palette.colors.size() > 0
 	var num_of_colors: int = custom_color_palette.colors.size() if custom_color_palette_exists  else number_of_colors
