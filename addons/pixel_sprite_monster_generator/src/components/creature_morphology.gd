@@ -105,3 +105,60 @@ static func _add_eye_pockets(map: Array[Variant], top: int, bottom: int, left: i
 				enclosed = false
 		if enclosed:
 			map[eye_x][y] = false
+
+## Optional connected anatomy based on the sampled profile, before color fill.
+static func apply_profile(source: Array[Variant], archetype: Archetype, strength: float, values: Dictionary) -> Array[Variant]:
+	var result: Array[Variant] = source.duplicate(true)
+	if result.is_empty() or result[0].is_empty() or archetype == Archetype.ORIGINAL:
+		return result
+	var width: int = result.size()
+	var height: int = result[0].size()
+	var cx: int = width / 2
+	var cy: int = height / 2
+	var rx: int = maxi(2, roundi(float(width) * float(values["body_width"]) * strength * 0.5))
+	var ry: int = maxi(2, roundi(float(height) * float(values["body_height"]) * strength * 0.5))
+	var head: int = maxi(2, roundi(float(width) * float(values["head"]) * strength * 0.5))
+	var limb: int = maxi(2, roundi(float(height) * float(values["appendage"]) * strength))
+	_draw_ellipse(result, cx, cy, rx, ry)
+	match archetype:
+		Archetype.BIPED:
+			_draw_ellipse(result, cx, cy - ry, head, head)
+			for side in [-1, 1]:
+				_draw_segment(result, cx + side * (rx - 1), cy, cx + side * (rx + limb), cy + limb / 2, 2)
+				_draw_segment(result, cx + side * (rx / 2), cy + ry - 1, cx + side * (rx / 2), cy + ry + limb, 2)
+		Archetype.INSECTOID:
+			_draw_ellipse(result, cx, cy - ry, head, head)
+			for side in [-1, 1]:
+				for index in 3:
+					var level: int = cy - ry / 2 + index * maxi(2, ry / 2)
+					_draw_segment(result, cx + side * (rx - 1), level, cx + side * (rx + limb), level + (index - 1) * limb / 2, 2)
+				_draw_segment(result, cx + side * (head / 2), cy - ry - head + 1, cx + side * (head + 1), cy - ry - head - limb / 2, 1)
+		Archetype.SLIME:
+			_draw_ellipse(result, cx, cy + ry / 3, rx + 2, ry)
+			_draw_segment(result, cx - rx, cy + ry, cx + rx, cy + ry, 2)
+		Archetype.WINGED:
+			_draw_ellipse(result, cx, cy - ry, head, head)
+			for side in [-1, 1]:
+				_draw_segment(result, cx + side * (rx - 1), cy - ry / 2, cx + side * (rx + limb), cy - ry, 3)
+				_draw_segment(result, cx + side * (rx + limb), cy - ry, cx + side * (rx + limb / 2), cy + ry / 2, 2)
+	return result
+
+
+static func _draw_ellipse(map: Array[Variant], cx: int, cy: int, rx: int, ry: int) -> void:
+	for x in range(maxi(0, cx - rx), mini(map.size(), cx + rx + 1)):
+		for y in range(maxi(0, cy - ry), mini(map[0].size(), cy + ry + 1)):
+			var dx: float = float(x - cx) / float(rx)
+			var dy: float = float(y - cy) / float(ry)
+			if dx * dx + dy * dy <= 1.0:
+				map[x][y] = true
+
+
+static func _draw_segment(map: Array[Variant], x0: int, y0: int, x1: int, y1: int, thickness: int) -> void:
+	var steps: int = maxi(1, maxi(absi(x1 - x0), absi(y1 - y0)))
+	for i in range(steps + 1):
+		var fraction: float = float(i) / float(steps)
+		var x: int = roundi(lerpf(float(x0), float(x1), fraction))
+		var y: int = roundi(lerpf(float(y0), float(y1), fraction))
+		for dx in thickness:
+			for dy in thickness:
+				_write(map, x + dx - thickness / 2, y + dy - thickness / 2, true)

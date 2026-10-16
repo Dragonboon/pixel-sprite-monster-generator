@@ -115,6 +115,19 @@ func run() -> void:
 	for x in 32:
 		for y in 32:
 			assert(insect[x][y] == insect[31 - x][y], "Anatomy must preserve symmetry on symmetric maps")
+	# Anatomical ranges remain deterministic with editable resource presets.
+	var profile := CreatureAnatomyProfile.new()
+	profile.body_width_min = 0.42
+	profile.body_width_max = 0.42
+	generator.anatomy_profile = profile
+	generator.creature_archetype = CreatureMorphology.Archetype.BIPED
+	generator.manual_seed = 7788
+	generator.draw_sprite()
+	assert(is_equal_approx(float(generator.last_anatomy["body_width"]), 0.42))
+	var anatomical_pixels: PackedByteArray = generator.get_image().get_data()
+	generator.draw_sprite()
+	assert(generator.get_image().get_data() == anatomical_pixels)
+	generator.anatomy_profile = null
 	# Quality filtering is deterministic and returns useful metadata even if the
 	# threshold is unreachable within the bounded number of attempts.
 	generator.creature_archetype = CreatureMorphology.Archetype.ORIGINAL
