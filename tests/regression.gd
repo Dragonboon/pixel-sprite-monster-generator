@@ -157,6 +157,19 @@ func run() -> void:
 	var dungeon := CreaturePixelEffects.process(reference, CreaturePixelEffects.Style.DUNGEON, CreaturePixelEffects.View.FRONT, 0.6, 0.0, 0.0, 12)
 	assert(cozy.get_data() != dungeon.get_data(), "Distinct art styles must differ visibly")
 	assert(cozy.get_pixel(5, 5).get_luminance() > dungeon.get_pixel(5, 5).get_luminance() + 0.25)
+	# Multiple new views are deterministic and stay within a native RGBA grid.
+	var view_source := Image.create(40, 40, false, Image.FORMAT_RGBA8)
+	view_source.fill(Color.TRANSPARENT)
+	for y in range(8, 30):
+		for x in range(11, 29):
+			view_source.set_pixel(x, y, Color(0.6, 0.4, 0.25))
+	for view in [CreaturePixelEffects.View.THREE_QUARTER_RIGHT, CreaturePixelEffects.View.PROFILE_LEFT, CreaturePixelEffects.View.PROFILE_RIGHT, CreaturePixelEffects.View.BACK, CreaturePixelEffects.View.ISOMETRIC]:
+		var projection: Image = CreaturePixelEffects.project(view_source, view)
+		assert(projection.get_size() == view_source.get_size())
+		assert(not projection.is_invisible())
+		assert(projection.get_data() == CreaturePixelEffects.project(view_source, view).get_data())
+	assert(CreaturePixelEffects.project(view_source, CreaturePixelEffects.View.PROFILE_LEFT).get_data() != view_source.get_data())
+	assert(CreaturePixelEffects.project(view_source, CreaturePixelEffects.View.ISOMETRIC).get_data() != view_source.get_data())
 	# Pixel effects preserve logical resolution and deterministic CPU-only PNG exports.
 	generator.visual_style = CreaturePixelEffects.Style.HANDHELD
 	generator.view_mode = CreaturePixelEffects.View.THREE_QUARTER

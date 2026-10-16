@@ -2,7 +2,7 @@ class_name CreaturePixelEffects
 extends RefCounted
 
 enum Style { CLASSIC, HANDHELD, JRPG, DUNGEON, COZY, ARCADE }
-enum View { FRONT, THREE_QUARTER }
+enum View { FRONT, THREE_QUARTER, THREE_QUARTER_RIGHT, PROFILE_LEFT, PROFILE_RIGHT, BACK, ISOMETRIC }
 
 ## CPU-only postprocessing; exactly one RGBA pixel per logical sprite cell.
 static func process(source: Image, style: Style, view: View, shade: float, dither: float, glitch: float, seed_value: int) -> Image:
@@ -10,16 +10,7 @@ static func process(source: Image, style: Style, view: View, shade: float, dithe
 		return null
 	var width: int = source.get_width()
 	var height: int = source.get_height()
-	var shifted: Image = source.duplicate()
-	if view == View.THREE_QUARTER:
-		shifted = Image.create(width, height, false, Image.FORMAT_RGBA8)
-		shifted.fill(Color.TRANSPARENT)
-		for y in height:
-			var offset: int = roundi(float(height / 2 - y) * 0.12)
-			for x in width:
-				var target: int = x + offset
-				if target >= 0 and target < width:
-					shifted.set_pixel(target, y, source.get_pixel(x, y))
+	var shifted: Image = project(source, view)
 	var result: Image = shifted.duplicate()
 	var light: float = clampf(shade, 0.0, 1.0)
 	var dots: float = clampf(dither, 0.0, 1.0)
@@ -87,3 +78,53 @@ static func process(source: Image, style: Style, view: View, shade: float, dithe
 					if copy.get_pixel(x, y).a > 0.0:
 						result.set_pixel(x, y, copy.get_pixel(sample, y))
 	return result
+
+
+## Pixel-snapped 2D approximations: not genuine 3D model rotation.
+## Old FRONT/THREE_QUARTER enum values remain stable for saved Godot scenes.
+static func project(source: Image, view: View) -> Image:
+	if source == null:
+		return null
+	if view == View.FRONT:
+		return source.duplicate()
+	var width: int = source.get_width()
+	var height: int = source.get_height()
+	var output := Image.create(width, height, false, Image.FORMAT_RGBA8)
+	output.fill(Color.TRANSPARENT)
+	var cx: float = float(width - 1) * 0.5
+	var cy: float = float(height - 1) * 0.5
+	for y in height:
+		for x in width:
+			var dx: float = float(x) - cx
+			var dy: float = float(y) - cy
+			var sx: float = float(x)
+			var sy: float = float(y)
+			match view:
+				View.THREE_QUARTER:
+					sx = cx + (dx + dy * 0.12) / 0.90
+				View.THREE_QUARTER_RIGHT:
+					sx = cx + (dx - dy * 0.12) / 0.90
+				View.PROFILE_LEFT:
+					sx = cx + (dx + dy * 0.09) / 0.66
+				View.PROFILE_RIGHT:
+					sx = cx - (dx - dy * 0.09) / 0.66
+				View.BACK:
+					sx = float(width - 1 - x)
+				View.ISOMETRIC:
+					# Inverse of a bounded 2D shear/compression, with no resampling.
+					var det: float = 0.80 * 0.77 + 0.16 * 0.13
+					sx = cx + (0.77 * dx + 0.16 * dy) / det
+					sy = cy + (-0.13 * dx + 0.80 * dy) / det
+				_:
+					pass
+			var source_x: int = roundi(sx)
+			var source_y: int = roundi(sy)
+			if source_x < 0 or source_y < 0 or source_x >= width or source_y >= height:
+				continue
+			var sample: Color = source.get_pixel(source_x, source_y)
+			if view == View.BACK and sample.a > 0.0:
+				# Merely indicates a rear-facing lighting pass; facial geometry
+				# cannot be recovered from a frontal mask.
+				sample = sample.darkened(0.18)
+			output.set_pixel(x, y, sample)
+	return output
