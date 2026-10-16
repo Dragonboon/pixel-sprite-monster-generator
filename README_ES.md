@@ -84,7 +84,7 @@ hasta la siguiente generación.
 
 ## Compatibilidad y pruebas
 
-La versión **1.4.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
+La versión **1.5.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
 
 ```sh
 python3 scripts/run_tests.py --godot /ruta/a/godot
@@ -199,3 +199,24 @@ var error := CreatureBatchGenerator.export_pngs(resultados, "user://criaturas", 
 La generación utiliza un nodo temporal y **no modifica la criatura que ya se muestra**. El nodo padre debe pertenecer al árbol de escenas. Cada llamada produce hasta **16 sprites** y devuelve imágenes, semillas iniciales y elegidas, puntuaciones, número de intentos y metadatos anatómicos. La exportación crea la carpeta de destino, archivos PNG en resolución nativa y un manifiesto JSON. Admite rutas `user://` y `res://`; los nombres existentes se sobrescriben. Conserva también el recurso del preset y la versión del plugin para reproducir exactamente el lote: el manifiesto no incluye todas las referencias de recursos.
 
 Las vistas proyectadas siguen siendo experimentales. La generación es síncrona; evita ejecutar lotes grandes en fotogramas críticos de juegos o móviles.
+
+## Encuentros RPG: generar exactamente 1–N monstruos (1.5)
+
+Para **una sola criatura** utiliza `CreatureBatchGenerator.generate_encounter(preset, parent, 1, semilla)`. Para varios enemigos, solicita una cantidad entre **1 y 128**. A diferencia del método anterior `generate()`, limitado a 16 resultados, la nueva API nunca reduce la cantidad silenciosamente. Devuelve `error`, `requested_count`, `generated_count`, `items` y `elapsed_ms`. Comprueba `error == OK` antes de utilizar el resultado. Las semillas individuales quedan registradas para repetir cada monstruo.
+
+```gdscript
+var preset: CreatureGenerationPreset = preload("res://demo/presets/dungeon_insectoid.tres")
+var encuentro: Dictionary = await CreatureBatchGenerator.generate_encounter_async(
+    preset, self, 8, 4200, 7919, 4
+)
+if encuentro["error"] == OK and encuentro["generated_count"] == 8:
+    for criatura in encuentro["items"]:
+        var sprite := Sprite2D.new()
+        sprite.texture = ImageTexture.create_from_image(criatura["image"])
+        sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+        add_child(sprite)
+```
+
+`generate_encounter_async()` cede un fotograma entre tandas de 1–16 criaturas; cada tanda sigue calculándose de forma síncrona. La alternativa `generate_encounter()` es útil para herramientas. Ajusta el tamaño de la tanda según el dispositivo. El plugin no incorpora estadísticas, IA ni colocación de enemigos. `elapsed_ms` sirve como medición orientativa, no como benchmark universal.
+
+La demo F5 incorpora **cantidad configurable de 1 a 128**, familias variadas o específicas (incluye Cuadrúpedo, Gólem y Espíritu), presets de ejemplo, favoritos, filtro de favoritos, puntuaciones, tiempos y exportación PNG+JSON. Al guardar correctamente muestra cuántas imágenes se han creado y su directorio completo; los errores se notifican visiblemente. Los favoritos duran solo durante la sesión. Con cantidades grandes puede aumentar el consumo de CPU/memoria. Las vistas proyectadas siguen siendo experimentales.

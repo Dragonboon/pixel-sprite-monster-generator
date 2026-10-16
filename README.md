@@ -83,7 +83,7 @@ the generated drawing; after clearing, `get_image()` returns `null` until regene
 
 ## Compatibility and validation
 
-Version **1.4.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
+Version **1.5.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
 
 ```sh
 python3 scripts/run_tests.py --godot /path/to/godot
@@ -203,3 +203,24 @@ var error := CreatureBatchGenerator.export_pngs(results, "user://creatures", "co
 `generate()` uses a disposable generator and leaves the existing scene unchanged; it requires a parent already in the scene tree and produces **up to 16 sprites per call**. Each result contains an Image, requested and selected seeds, quality score/acceptance/attempts and sampled anatomical data. Fixed seeds, settings and generator version reproduce the same images. The batch exporter creates its destination folder, writes native-resolution PNGs and a JSON manifest. Output paths must begin with `user://` or `res://`; existing matching filenames are overwritten. Store the preset resource alongside the manifest if exact future replay matters. The manifest does not serialize resource references or the full generator version.
 
 The optional projections remain experimental. Batch generation is synchronous and should run outside time-sensitive gameplay frames, particularly with high resolution or many quality attempts.
+
+## RPG encounters: generate exactly 1–N creatures (1.5)
+
+For a **single creature**, use `CreatureBatchGenerator.generate_encounter(preset, parent, 1, seed)`. For multiple enemies, set `count` between **1 and 128**. Unlike the legacy small `generate()` helper (limited to 16, and now rejecting larger requests), this API never truncates your count: its returned dictionary includes `error`, `requested_count`, `generated_count`, `items`, and `elapsed_ms`. Check `error == OK` before using the results. All creatures have their own repeatable requested and selected seeds.
+
+```gdscript
+var preset: CreatureGenerationPreset = preload("res://demo/presets/dungeon_insectoid.tres")
+var encounter: Dictionary = await CreatureBatchGenerator.generate_encounter_async(
+    preset, self, 8, 4200, 7919, 4
+)
+if encounter["error"] == OK and encounter["generated_count"] == 8:
+    for creature in encounter["items"]:
+        var sprite := Sprite2D.new()
+        sprite.texture = ImageTexture.create_from_image(creature["image"])
+        sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+        add_child(sprite)
+```
+
+`generate_encounter_async()` yields between chunks (1–16 items per chunk), making it preferable for RPG encounters; processing *inside* a chunk is still synchronous. The synchronous `generate_encounter()` can be useful for tools. Validate count and use smaller chunk sizes on low-power hardware. Generation does not supply AI, stats or enemy placement. `elapsed_ms` measures generation wall-clock time and is not an authoritative cross-device benchmark.
+
+The F5 laboratory now offers a **1–128 creature counter**, mixed or selected anatomy families (adding Quadruped, Golem, Spirit), sample .tres presets, favorite toggles, favorite-only view, quality/anatomy scores, elapsed time and PNG+JSON export. A successful export reports the number of images and full destination directory; invalid or empty selections report a visible error. Favorites are session-only, not saved between runs. Large counts can still take time and memory; avoid running 128 expensive generations in a critical gameplay frame. The older projection views remain experimental.
