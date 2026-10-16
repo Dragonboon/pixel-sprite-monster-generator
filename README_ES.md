@@ -158,3 +158,24 @@ $Sprite2D.texture = ImageTexture.create_from_image(imagen)
 ```
 
 La demo F5 permite ajustar mood, estilo, umbral, sombreado y vista. Cada tarjeta muestra semilla y puntuación. **Export six PNGs** guarda las seis imágenes de la galería en `user://`. Conviene limitar los reintentos cuando la generación se ejecuta en dispositivos móviles.
+
+## Perfiles de proporciones anatómicas
+
+Asigna un recurso **CreatureAnatomyProfile** a `anatomy_profile` para activar la construcción procedural de masas conectadas. En el Inspector podrás editar intervalos mínimos y máximos relativos al tamaño del sprite para anchura, altura, cabeza y longitud de apéndices. Se muestrean mediante un RNG local reproducible. Cozy favorece cuerpos anchos con extremidades cortas; Horror estrecha la masa y alarga las extremidades; Epic aumenta volumen y alcance.
+
+```gdscript
+var proporciones := CreatureAnatomyProfile.new()
+proporciones.body_width_min = 0.38
+proporciones.body_width_max = 0.52
+proporciones.appendage_min = 0.18
+proporciones.appendage_max = 0.30
+monstruo.anatomy_profile = proporciones
+monstruo.creature_archetype = CreatureMorphology.Archetype.BIPED
+monstruo.silhouette_mood = CreatureMood.Mood.COZY
+monstruo.randomize_seed = false
+monstruo.manual_seed = 4433
+monstruo.draw_sprite()
+print(monstruo.last_anatomy) # Proporciones muestreadas
+```
+
+El perfil nulo conserva el funcionamiento anterior. Este sistema inicial construye formas conectadas, pero todavía requiere selección visual de semillas; no garantiza una anatomía exacta. La nueva opción cambia los píxeles respecto al generador previo. Cozy y Dungeon también cuentan ahora con separación más marcada entre luminosidades cálidas y sombras frías.

@@ -162,3 +162,24 @@ $Sprite2D.texture = texture
 ```
 
 The F5 laboratory now exposes mood, style, quality threshold, shading and a front/3/4 comparison. Each gallery card reports the selected seed and measured score. **Export six PNGs** saves precisely the displayed pixel images under `user://`. Quality filtering is intended for batch authoring; keep its attempt budget low for runtime generation on mobile devices.
+
+## Anatomical proportion profiles
+
+Assign a **CreatureAnatomyProfile** resource to `anatomy_profile` to opt into connected procedural body construction. The inspector exposes bounded minimum/maximum ratios for body width, height, head and appendage length. The ranges are sampled with a private seeded RNG, and silhouette mood biases the sampled proportions: Cozy favors wider, rounder forms with shorter limbs; Horror favors a narrow body and longer limbs; Epic increases mass and reach.
+
+```gdscript
+var proportions := CreatureAnatomyProfile.new()
+proportions.body_width_min = 0.38
+proportions.body_width_max = 0.52
+proportions.appendage_min = 0.18
+proportions.appendage_max = 0.30
+monster.anatomy_profile = proportions
+monster.creature_archetype = CreatureMorphology.Archetype.BIPED
+monster.silhouette_mood = CreatureMood.Mood.COZY
+monster.randomize_seed = false
+monster.manual_seed = 4433
+monster.draw_sprite()
+print(monster.last_anatomy) # The sampled ratios of the latest candidate
+```
+
+A null profile retains the pre-1.5 anatomy path. This is an initial connected-shape system, not pose estimation or anatomical validation; limbs may still need visual curation. Profile-enabled output is not pixel-identical to the pre-profile generator. The new changes also create a much greater luminance separation between Cozy (warm mid/high values) and Dungeon (cool, dark shadow masses).
