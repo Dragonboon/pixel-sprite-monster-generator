@@ -14,6 +14,13 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 @export_range(0.0, 1.0, 0.05) var organic_shape_strength: float = 0.0
 ## Optional removal of detached filled islands after cellular smoothing.
 @export var keep_largest_body: bool = false
+@export_category("Creature Anatomy")
+## ORIGINAL keeps the previously generated silhouette unchanged.
+@export var creature_archetype: CreatureMorphology.Archetype = CreatureMorphology.Archetype.ORIGINAL
+## Size of anatomy extensions. Zero disables the morphology stage.
+@export_range(0.0, 1.0, 0.05) var anatomy_strength: float = 0.7
+## Optionally cut a pair of enclosed eye pockets where the body is solid.
+@export var facial_eyes: bool = false
 ## The number of colors to generate the sprie palette
 @export var number_of_colors: int = 12:
 	set(value):
@@ -112,6 +119,8 @@ func draw_sprite() -> void:
 	map = cellular_automata.do_steps(map)
 	if organic_shape_strength > 0.0 or keep_largest_body:
 		map = SilhouetteRefiner.refine(map, organic_shape_strength, keep_largest_body, symmetry)
+	if creature_archetype != CreatureMorphology.Archetype.ORIGINAL and anatomy_strength > 0.0:
+		map = CreatureMorphology.apply(map, creature_archetype, anatomy_strength, last_seed, facial_eyes)
 	
 	var custom_color_palette_exists: bool = custom_color_palette != null and custom_color_palette.colors.size() > 0
 	var num_of_colors: int = custom_color_palette.colors.size() if custom_color_palette_exists  else number_of_colors

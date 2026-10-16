@@ -48,6 +48,9 @@ does not modify noise resources shared with other instances.
 | Symmetry | 100 gives a mirrored silhouette; lower values introduce variation |
 | Organic Shape Strength | Optional irregular elliptical trimming (0 preserves the original result) |
 | Keep Largest Body | Optional removal of detached fragments after cellular smoothing |
+| Creature Archetype | Original, Biped, Insectoid, Slime or Winged silhouette rules |
+| Anatomy Strength | Controls the extension size; zero disables anatomy generation |
+| Facial Eyes | Creates a pair of enclosed eye pockets when the body has room |
 | Steps / Birth Limit / Death Limit | Cellular automata smoothing; steps are limited to 0–20 |
 | Number of Colors | Generated palette size, normalized to 1–64 |
 | Custom Color Palette | `PixelSpriteMonsterGeneratorColorPalette`; nonempty palettes override generated body/eye palettes |
@@ -80,7 +83,7 @@ the generated drawing; after clearing, `get_image()` returns `null` until regene
 
 ## Compatibility and validation
 
-Version **1.2.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
+Version **1.3.0** targets Godot 4.7. Install the addon in `addons/pixel_sprite_monster_generator/`; its entry files are `plugin.cfg` and `plugin.gd`. When updating an existing installation, replace the previous addon folder, update any resource references in your own scenes, and enable the plugin again. Seed reproducibility requires the same generator implementation and settings.
 
 ```sh
 python3 scripts/run_tests.py --godot /path/to/godot
@@ -103,3 +106,30 @@ See [LICENSE](LICENSE) and preserve applicable attribution when redistributing.
 
 [Report a problem](https://github.com/sempitern0/pixel-sprite-monster-generator/issues)
 with your seed, settings, Godot version and platform.
+
+## Anatomy families
+
+The new **Creature Anatomy** inspector group provides four explicit families in addition to **Original**. **Biped** introduces separate legs and arms, **Insectoid** adds paired antennae and limbs, **Slime** uses a rounded crown and wider base, and **Winged** extends paired wings from the torso. These are procedural silhouette guides rather than rigged characters, and individual seeds can still need curation.
+
+```gdscript
+monster.randomize_seed = false
+monster.manual_seed = 1042
+monster.creature_archetype = CreatureMorphology.Archetype.INSECTOID
+monster.anatomy_strength = 0.9
+monster.organic_shape_strength = 0.25
+monster.keep_largest_body = true
+monster.facial_eyes = true
+monster.cell_animation = false
+monster.draw_sprite()
+var result := monster.export_png("user://insectoid.png")
+```
+
+The morphology pass operates after cellular smoothing and before coloring. It never modifies global randomness and preserves mirrored additions; setting **Original** bypasses it entirely. Eye pockets are opportunistic and are not guaranteed for fragmented or narrow silhouettes. Keep original seeds/settings for legacy output: generated artwork changes only when the new parameters are enabled.
+
+### Demo workflow
+
+Run **F5** to inspect Original, Biped, Insectoid, Slime, Winged and an asymmetrical Biped side by side. Use **Base seed** to replay, **New seed** to explore and **Export six PNGs** to save neutral poses to `user://`. This gallery is outside the addon folder; installing the plugin does not copy demo controls into your game.
+
+### Procedural quality limits
+
+This creates fast, editable **sprite silhouettes**, not handcrafted anatomy, skeletal animation or semantic meshes. Small grids may clip antennae and wings; increasing sprite size and filtering candidate seeds improves readability. The generated body still uses the existing noise-based palette and optional cell-group animation.

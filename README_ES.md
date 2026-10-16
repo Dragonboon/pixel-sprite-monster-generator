@@ -48,6 +48,9 @@ hijos de tu juego y no altera su aleatoriedad ni los recursos de ruido compartid
 | Symmetry | 100 crea una silueta reflejada; valores menores introducen variación |
 | Organic Shape Strength | Recorta el contorno de forma irregular; 0 conserva el resultado original |
 | Keep Largest Body | Elimina fragmentos desconectados después del autómata celular |
+| Creature Archetype | Original, bípedo, insectoide, gelatinoso o alado |
+| Anatomy Strength | Intensidad de las extremidades y rasgos; 0 desactiva la morfología |
+| Facial Eyes | Abre dos cavidades para ojos si hay suficiente espacio en la silueta |
 | Steps / Birth Limit / Death Limit | Suavizado mediante autómata celular; entre 0 y 20 pasos |
 | Number of Colors | Paleta generada de 1–64 colores |
 | Custom Color Palette | Recurso `PixelSpriteMonsterGeneratorColorPalette`; una paleta no vacía sustituye los colores generados de cuerpo y ojos |
@@ -81,7 +84,7 @@ hasta la siguiente generación.
 
 ## Compatibilidad y pruebas
 
-La versión **1.2.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
+La versión **1.3.0** está orientada a Godot 4.7. Instala el complemento en `addons/pixel_sprite_monster_generator/`; sus archivos de entrada son `plugin.cfg` y `plugin.gd`. Al actualizar una instalación existente, sustituye la carpeta anterior, actualiza las referencias a recursos en tus propias escenas y vuelve a activar el complemento. La reproducibilidad de las semillas requiere la misma implementación y ajustes del generador.
 
 ```sh
 python3 scripts/run_tests.py --godot /ruta/a/godot
@@ -104,3 +107,26 @@ Godot mantenida por [sempitern0](https://github.com/sempitern0). Consulta
 
 [Comunica un problema](https://github.com/sempitern0/pixel-sprite-monster-generator/issues)
 con semilla, ajustes, versión de Godot y plataforma.
+
+## Familias anatómicas
+
+El grupo **Creature Anatomy** del Inspector ofrece cuatro familias y el modo **Original**. **Biped** separa piernas y añade brazos; **Insectoid** incorpora antenas y patas pareadas; **Slime** genera una cúpula redondeada con base más amplia; **Winged** extiende alas a ambos lados del cuerpo. Son guías procedurales de silueta, no personajes articulados, por lo que conviene seleccionar semillas legibles.
+
+```gdscript
+monstruo.randomize_seed = false
+monstruo.manual_seed = 1042
+monstruo.creature_archetype = CreatureMorphology.Archetype.INSECTOID
+monstruo.anatomy_strength = 0.9
+monstruo.organic_shape_strength = 0.25
+monstruo.keep_largest_body = true
+monstruo.facial_eyes = true
+monstruo.cell_animation = false
+monstruo.draw_sprite()
+var resultado := monstruo.export_png("user://insectoide.png")
+```
+
+La morfología se aplica después del suavizado celular y antes del color. No modifica el generador aleatorio global; **Original** evita por completo esta etapa. Las cavidades para los ojos dependen de disponer de una región sólida apropiada. Los resultados anteriores se conservan si se mantienen desactivados los nuevos parámetros.
+
+### Demo y límites
+
+Pulsa **F5** para ver seis variantes, cambiar la semilla y exportar PNG a `user://`. La galería queda fuera de `addons/`. No produce esqueletos, animaciones diseñadas a mano ni mallas semánticas; en cuadrículas pequeñas pueden recortarse antenas o alas.

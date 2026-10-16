@@ -2,9 +2,12 @@ extends Control
 
 # Exploration gallery lives outside addons; generator API remains reusable.
 const PRESETS: Array[Dictionary] = [
-	{"name": "Forest creature", "shape": 0.65, "symmetry": 91.0, "steps": 4, "colors": 9, "size": Vector2(44, 44)},
-	{"name": "Armored guardian", "shape": 0.25, "symmetry": 100.0, "steps": 6, "colors": 6, "size": Vector2(48, 44)},
-	{"name": "Floating spirit", "shape": 0.85, "symmetry": 86.0, "steps": 3, "colors": 12, "size": Vector2(42, 50)}
+	{"name": "Original", "shape": 0.0, "anatomy": CreatureMorphology.Archetype.ORIGINAL, "symmetry": 100.0, "steps": 4, "colors": 12, "size": Vector2(48, 48)},
+	{"name": "Forest biped", "shape": 0.35, "anatomy": CreatureMorphology.Archetype.BIPED, "symmetry": 100.0, "steps": 4, "colors": 9, "size": Vector2(48, 48)},
+	{"name": "Insectoid", "shape": 0.2, "anatomy": CreatureMorphology.Archetype.INSECTOID, "symmetry": 100.0, "steps": 3, "colors": 7, "size": Vector2(48, 48)},
+	{"name": "Soft slime", "shape": 0.6, "anatomy": CreatureMorphology.Archetype.SLIME, "symmetry": 100.0, "steps": 3, "colors": 8, "size": Vector2(48, 48)},
+	{"name": "Winged creature", "shape": 0.4, "anatomy": CreatureMorphology.Archetype.WINGED, "symmetry": 100.0, "steps": 4, "colors": 10, "size": Vector2(48, 48)},
+	{"name": "Wild biped", "shape": 0.15, "anatomy": CreatureMorphology.Archetype.BIPED, "symmetry": 83.0, "steps": 5, "colors": 6, "size": Vector2(48, 48)}
 ]
 var generator: PixelSpriteMonsterGenerator
 var gallery: GridContainer
@@ -76,13 +79,16 @@ func _regenerate() -> void:
 	rendered_images.clear()
 	var base_seed := int(seed_input.value)
 	for index in 6:
-		var preset: Dictionary = PRESETS[index % PRESETS.size()]
+		var preset: Dictionary = PRESETS[index]
 		generator.sprite_size = preset["size"]
 		generator.symmetry = float(preset["symmetry"])
 		generator.steps = int(preset["steps"])
 		generator.number_of_colors = int(preset["colors"])
 		generator.organic_shape_strength = float(preset["shape"])
 		generator.keep_largest_body = true
+		generator.creature_archetype = preset["anatomy"]
+		generator.anatomy_strength = 0.95
+		generator.facial_eyes = true
 		generator.manual_seed = base_seed + index * 7919
 		generator.draw_sprite()
 		var generated: Image = generator.get_image()
@@ -104,7 +110,7 @@ func _regenerate() -> void:
 		preview.custom_minimum_size = Vector2(270, 168)
 		contents.add_child(preview)
 		gallery.add_child(card)
-	status_label.text = "Six reproducible variations. Pixel size is preserved for export."
+	status_label.text = "Four anatomy families plus original and an asymmetric biped. Export preserves pixel size."
 
 
 func _export_gallery() -> void:

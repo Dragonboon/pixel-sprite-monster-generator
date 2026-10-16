@@ -91,6 +91,30 @@ func run() -> void:
 	var organic_pixels: PackedByteArray = generator.get_image().get_data()
 	generator.draw_sprite()
 	assert(generator.get_image().get_data() == organic_pixels)
+	# Archetypes are opt-in and never affect the original random stream.
+	generator.organic_shape_strength = 0.45
+	generator.keep_largest_body = true
+	var distinct: Dictionary = {}
+	for archetype in [CreatureMorphology.Archetype.BIPED, CreatureMorphology.Archetype.INSECTOID, CreatureMorphology.Archetype.SLIME, CreatureMorphology.Archetype.WINGED]:
+		generator.creature_archetype = archetype
+		generator.facial_eyes = true
+		generator.manual_seed = 42
+		generator.draw_sprite()
+		var pixels: PackedByteArray = generator.get_image().get_data()
+		generator.draw_sprite()
+		assert(generator.get_image().get_data() == pixels, "Archetypes must reproduce with a fixed seed")
+		distinct[hash(pixels)] = true
+	assert(distinct.size() >= 2, "Archetypes should produce distinct silhouettes")
+	var sample: Array[Variant] = []
+	for x in 32:
+		var column: Array = []
+		for y in 32:
+			column.append(x >= 7 and x <= 24 and y >= 7 and y <= 24)
+		sample.append(column)
+	var insect := CreatureMorphology.apply(sample, CreatureMorphology.Archetype.INSECTOID, 1.0, 42)
+	for x in 32:
+		for y in 32:
+			assert(insect[x][y] == insect[31 - x][y], "Anatomy must preserve symmetry on symmetric maps")
 	generator.clear()
 	assert(is_instance_valid(authored))
 	assert(generator.get_image() == null)
