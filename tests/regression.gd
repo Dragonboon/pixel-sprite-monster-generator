@@ -208,6 +208,22 @@ func run() -> void:
 	var preserved: PackedByteArray = generator.get_image().get_data()
 	var batch: Array[Dictionary] = CreatureBatchGenerator.generate(authoring, root, 3, 2500)
 	assert(batch.size() == 3)
+	# Exact counts: reject invalid requests, never truncate silently.
+	assert(CreatureBatchGenerator.generate(authoring, root, 17, 2500).is_empty())
+	for amount in [1, 2, 6, 17]:
+		var encounter: Dictionary = CreatureBatchGenerator.generate_encounter(authoring, root, amount, 2500)
+		assert(encounter["error"] == OK)
+		assert(encounter["generated_count"] == amount)
+		assert(encounter["items"].size() == amount)
+		assert(float(encounter["elapsed_ms"]) >= 0.0)
+	assert(CreatureBatchGenerator.generate_encounter(authoring, root, 0, 2500)["error"] == ERR_INVALID_PARAMETER)
+	assert(CreatureBatchGenerator.generate_encounter(authoring, root, 129, 2500)["error"] == ERR_INVALID_PARAMETER)
+	var async_result: Dictionary = await CreatureBatchGenerator.generate_encounter_async(authoring, root, 6, 2500, CreatureBatchGenerator.DEFAULT_SEED_STEP, 2)
+	assert(async_result["error"] == OK and async_result["generated_count"] == 6)
+	var sync_result: Dictionary = CreatureBatchGenerator.generate_encounter(authoring, root, 6, 2500)
+	for i in 6:
+		assert(sync_result["items"][i]["image"].get_data() == async_result["items"][i]["image"].get_data())
+
 	assert(batch[0]["requested_seed"] == 2500)
 	assert(batch[1]["requested_seed"] == 10419)
 	assert(batch[0]["image"] is Image)
@@ -219,7 +235,7 @@ func run() -> void:
 	assert(CreatureBatchGenerator.generate(authoring, root, 0, 2500).is_empty())
 	assert(CreatureBatchGenerator.generate(null, root, 3, 2500).is_empty())
 	assert(CreatureBatchGenerator.export_pngs(batch, "user://creature-batch-test", "batch") == OK)
-	var manifest := JSON.parse_string(FileAccess.get_file_as_string("user://creature-batch-test/batch_manifest.json"))
+	var manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://creature-batch-test/batch_manifest.json"))
 	assert(manifest is Dictionary and manifest["count"] == 3)
 	assert(Image.load_from_file("user://creature-batch-test/batch_01_2500.png").get_size() == batch[0]["image"].get_size())
 	generator.clear()
