@@ -115,6 +115,28 @@ func run() -> void:
 	for x in 32:
 		for y in 32:
 			assert(insect[x][y] == insect[31 - x][y], "Anatomy must preserve symmetry on symmetric maps")
+	# Quality filtering is deterministic and returns useful metadata even if the
+	# threshold is unreachable within the bounded number of attempts.
+	generator.creature_archetype = CreatureMorphology.Archetype.ORIGINAL
+	generator.silhouette_mood = CreatureMood.Mood.COZY
+	generator.quality_enabled = true
+	generator.quality_min_score = 100.0
+	generator.quality_max_attempts = 4
+	generator.manual_seed = 2026
+	generator.draw_sprite()
+	var selected_seed: int = generator.last_seed
+	var quality_pixels: PackedByteArray = generator.get_image().get_data()
+	assert(generator.last_quality_attempts == 4)
+	generator.draw_sprite()
+	assert(generator.last_seed == selected_seed)
+	assert(generator.get_image().get_data() == quality_pixels)
+	assert(generator.last_quality_score > 0.0)
+	assert(not generator.quality_accepted or generator.last_quality_score >= 100.0)
+	generator.quality_min_score = 0.0
+	generator.draw_sprite()
+	assert(generator.quality_accepted and generator.last_quality_attempts == 1)
+	generator.quality_enabled = false
+	generator.silhouette_mood = CreatureMood.Mood.NORMAL
 	generator.clear()
 	assert(is_instance_valid(authored))
 	assert(generator.get_image() == null)

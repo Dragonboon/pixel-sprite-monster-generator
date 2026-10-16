@@ -21,6 +21,13 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 @export_range(0.0, 1.0, 0.05) var anatomy_strength: float = 0.7
 ## Optionally cut a pair of enclosed eye pockets where the body is solid.
 @export var facial_eyes: bool = false
+@export_category("Art Direction")
+@export var silhouette_mood: CreatureMood.Mood = CreatureMood.Mood.NORMAL
+@export_category("Quality Selection")
+## Disabled by default to keep all existing seed outputs identical.
+@export var quality_enabled: bool = false
+@export_range(0.0, 100.0, 1.0) var quality_min_score: float = 72.0
+@export_range(1, 32, 1) var quality_max_attempts: int = 10
 ## The number of colors to generate the sprie palette
 @export var number_of_colors: int = 12:
 	set(value):
@@ -81,6 +88,10 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 
 ## Seed used for the most recent generation; save it to reproduce a random result.
 var last_seed: int = 0
+## Read-only generation metadata for UX and reproducibility.
+var last_quality_score: float = 0.0
+var last_quality_attempts: int = 0
+var quality_accepted: bool = true
 var rng := RandomNumberGenerator.new()
 
 var map_generator: MapGenerator
@@ -109,19 +120,46 @@ func draw_sprite() -> void:
 		last_seed = rng.seed
 	else:
 		last_seed = manual_seed
-	rng.seed = last_seed
-	map_generator = MapGenerator.new(rng)
-	cellular_automata = CellularAutomata.new(clampi(steps, 0, 20), clampi(birth_limit, 0, 8), clampi(death_limit, 0, 8))
+	# Candidate masks are evaluated without touching the game's global RNG.
+	var first_seed: int = last_seed
+	var best_seed: int = first_seed
+	var best_state: int = 0
+	var best_score: float = -1.0
+	var best_mask: Array[Variant] = []
+	var attempts: int = clampi(quality_max_attempts, 1, 32) if quality_enabled else 1
+	quality_accepted = false
+	for attempt in attempts:
+		var candidate_seed: int = first_seed + attempt * 7919
+		rng.seed = candidate_seed
+		map_generator = MapGenerator.new(rng)
+		cellular_automata = CellularAutomata.new(clampi(steps, 0, 20), clampi(birth_limit, 0, 8), clampi(death_limit, 0, 8))
+		var candidate: Array[Variant] = map_generator.generate_new(sprite_size, symmetry)
+		candidate = cellular_automata.do_steps(candidate)
+		if organic_shape_strength > 0.0 or keep_largest_body:
+			candidate = SilhouetteRefiner.refine(candidate, organic_shape_strength, keep_largest_body, symmetry)
+		if creature_archetype != CreatureMorphology.Archetype.ORIGINAL and anatomy_strength > 0.0:
+			candidate = CreatureMorphology.apply(candidate, creature_archetype, anatomy_strength, candidate_seed, facial_eyes)
+		if silhouette_mood != CreatureMood.Mood.NORMAL:
+			candidate = CreatureMood.apply(candidate, silhouette_mood, candidate_seed)
+		var measurement: Dictionary = CreatureQuality.measure(candidate)
+		var score: float = float(measurement["score"])
+		last_quality_attempts = attempt + 1
+		if score > best_score:
+			best_score = score
+			best_seed = candidate_seed
+			best_mask = candidate
+			best_state = rng.state
+		if not quality_enabled or score >= quality_min_score:
+			quality_accepted = true
+			break
+	last_seed = best_seed
+	last_quality_score = best_score
+	rng.seed = best_seed
+	rng.state = best_state
 	color_scheme_generator = ColorSchemeGenerator.new(rng)
 	color_filler = ColorFiller.new(main_noise, secondary_noise, rng)
+	var map: Array[Variant] = best_mask
 
-	var map: Array[Variant] = map_generator.generate_new(sprite_size, symmetry)
-	map = cellular_automata.do_steps(map)
-	if organic_shape_strength > 0.0 or keep_largest_body:
-		map = SilhouetteRefiner.refine(map, organic_shape_strength, keep_largest_body, symmetry)
-	if creature_archetype != CreatureMorphology.Archetype.ORIGINAL and anatomy_strength > 0.0:
-		map = CreatureMorphology.apply(map, creature_archetype, anatomy_strength, last_seed, facial_eyes)
-	
 	var custom_color_palette_exists: bool = custom_color_palette != null and custom_color_palette.colors.size() > 0
 	var num_of_colors: int = custom_color_palette.colors.size() if custom_color_palette_exists  else number_of_colors
 	
