@@ -114,8 +114,13 @@ var eye_scheme: PackedColorArray
 var all_color_groups: Dictionary = {}
 
 
+## Internal batch-worker setting. Ordinary scene nodes still generate on _ready().
+var defer_initial_generation: bool = false
+
+
 func _ready() -> void:
-	draw_sprite()
+	if not defer_initial_generation:
+		draw_sprite()
 
 
 func draw_sprite() -> void:
@@ -129,6 +134,10 @@ func draw_sprite() -> void:
 		last_seed = rng.seed
 	else:
 		last_seed = manual_seed
+	# Reset metadata before every candidate; never leak a previous family into a new result.
+	last_anatomy = {}
+	last_anatomy_metrics = {}
+	last_quality_attempts = 0
 	# Candidate masks are evaluated without touching the game's global RNG.
 	var first_seed: int = last_seed
 	var best_seed: int = first_seed

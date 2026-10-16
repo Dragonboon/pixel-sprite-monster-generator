@@ -10,81 +10,90 @@ const DEFAULT_SEED_STEP: int = 7919
 
 static func generate(preset: CreatureGenerationPreset, parent: Node, count: int, first_seed: int, seed_step: int = DEFAULT_SEED_STEP) -> Array[Dictionary]:
 	var items: Array[Dictionary] = []
-	if preset == null or parent == null or not parent.is_inside_tree() or count <= 0 or count > MAX_ITEMS:
+	if _validate_encounter(preset, parent, count) != OK or count > MAX_ITEMS:
 		return items
+	var worker: PixelSpriteMonsterGenerator = _create_worker(preset, parent)
+	_append_range(items, worker, 0, count, first_seed, seed_step)
+	_release_worker(worker)
+	return items
+
+
+## Exactly 1..128 results or an explicit error; never truncate the count.
+## One temporary generator is reused for the entire encounter.
+static func generate_encounter(preset: CreatureGenerationPreset, parent: Node, count: int, first_seed: int, seed_step: int = DEFAULT_SEED_STEP) -> Dictionary:
+	var started: int = Time.get_ticks_usec()
+	var valid: Error = _validate_encounter(preset, parent, count)
+	if valid != OK:
+		return _encounter_result(valid, [], count, started)
+	var items: Array[Dictionary] = []
+	var worker: PixelSpriteMonsterGenerator = _create_worker(preset, parent)
+	_append_range(items, worker, 0, count, first_seed, seed_step)
+	_release_worker(worker)
+	return _encounter_result(OK if items.size() == count else ERR_CANT_CREATE, items if items.size() == count else [], count, started)
+
+
+## Yields between chunks, without allocating a new generator per chunk.
+## The calculation within each chunk is still synchronous.
+static func generate_encounter_async(preset: CreatureGenerationPreset, parent: Node, count: int, first_seed: int, seed_step: int = DEFAULT_SEED_STEP, chunk_size: int = 4) -> Dictionary:
+	var started: int = Time.get_ticks_usec()
+	var valid: Error = _validate_encounter(preset, parent, count)
+	if valid != OK or chunk_size < 1 or chunk_size > MAX_ITEMS:
+		return _encounter_result(valid if valid != OK else ERR_INVALID_PARAMETER, [], count, started)
+	var items: Array[Dictionary] = []
+	var worker: PixelSpriteMonsterGenerator = _create_worker(preset, parent)
+	for offset in range(0, count, chunk_size):
+		var amount: int = mini(chunk_size, count - offset)
+		_append_range(items, worker, offset, amount, first_seed, seed_step)
+		if offset + amount < count:
+			await parent.get_tree().process_frame
+			if not is_instance_valid(worker) or not is_instance_valid(parent) or not parent.is_inside_tree():
+				if is_instance_valid(worker):
+					_release_worker(worker)
+				return _encounter_result(ERR_UNAVAILABLE, [], count, started)
+	_release_worker(worker)
+	return _encounter_result(OK if items.size() == count else ERR_CANT_CREATE, items if items.size() == count else [], count, started)
+
+
+static func _create_worker(preset: CreatureGenerationPreset, parent: Node) -> PixelSpriteMonsterGenerator:
 	var worker := PixelSpriteMonsterGenerator.new()
+	worker.defer_initial_generation = true
 	preset.apply_to(worker)
 	worker.randomize_seed = false
-	worker.manual_seed = first_seed
 	worker.visible = false
 	parent.add_child(worker)
-	for index in count:
-		var started_us: int = Time.get_ticks_usec()
-		var requested_seed: int = first_seed + index * seed_step
-		if index > 0:
-			worker.manual_seed = requested_seed
-			worker.draw_sprite()
-		var generated: Image = worker.get_image()
-		if generated == null:
-			continue
+	return worker
+
+
+static func _append_range(items: Array[Dictionary], worker: PixelSpriteMonsterGenerator, offset: int, count: int, first_seed: int, seed_step: int) -> void:
+	for local_index in count:
+		var index: int = offset + local_index
+		var requested: int = first_seed + index * seed_step
+		var started: int = Time.get_ticks_usec()
+		worker.manual_seed = requested
+		worker.draw_sprite()
+		var image: Image = worker.get_image()
+		if image == null or image.is_empty():
+			return
 		items.append({
 			"index": index,
 			"seed_step": seed_step,
-			"elapsed_ms": float(Time.get_ticks_usec() - started_us) / 1000.0,
-			"requested_seed": requested_seed,
+			"elapsed_ms": float(Time.get_ticks_usec() - started) / 1000.0,
+			"requested_seed": requested,
 			"selected_seed": worker.last_seed,
 			"quality_score": worker.last_quality_score,
 			"quality_accepted": worker.quality_accepted,
 			"quality_attempts": worker.last_quality_attempts,
 			"anatomy": worker.last_anatomy.duplicate(true),
 			"anatomy_metrics": worker.last_anatomy_metrics.duplicate(true),
-			"image": generated
+			"image": image
 		})
-	parent.remove_child(worker)
-	worker.free()
-	return items
 
 
-
-## RPG encounter generation. Exactly 1..128 results or a non-OK error.
-## Large requests are processed in chunks, with explicit validation instead
-## of the legacy 16-item function's old silent truncation.
-static func generate_encounter(preset: CreatureGenerationPreset, parent: Node, count: int, first_seed: int, seed_step: int = DEFAULT_SEED_STEP) -> Dictionary:
-	var start_us: int = Time.get_ticks_usec()
-	var valid: Error = _validate_encounter(preset, parent, count)
-	if valid != OK:
-		return _encounter_result(valid, [], count, start_us)
-	var items: Array[Dictionary] = []
-	for offset in range(0, count, MAX_ITEMS):
-		var amount: int = mini(MAX_ITEMS, count - offset)
-		var part: Array[Dictionary] = generate(preset, parent, amount, first_seed + offset * seed_step, seed_step)
-		if part.size() != amount:
-			return _encounter_result(ERR_CANT_CREATE, [], count, start_us)
-		for local in part:
-			local["index"] = offset + int(local["index"])
-			items.append(local)
-	return _encounter_result(OK, items, count, start_us)
-
-
-## Preferred at runtime: yields a frame between chunks, keeping a multi-wave
-## encounter from blocking the game for all creatures at once.
-static func generate_encounter_async(preset: CreatureGenerationPreset, parent: Node, count: int, first_seed: int, seed_step: int = DEFAULT_SEED_STEP, chunk_size: int = 4) -> Dictionary:
-	var start_us: int = Time.get_ticks_usec()
-	var valid: Error = _validate_encounter(preset, parent, count)
-	if valid != OK or chunk_size < 1 or chunk_size > MAX_ITEMS:
-		return _encounter_result(valid if valid != OK else ERR_INVALID_PARAMETER, [], count, start_us)
-	var items: Array[Dictionary] = []
-	for offset in range(0, count, chunk_size):
-		var amount: int = mini(chunk_size, count - offset)
-		var part: Array[Dictionary] = generate(preset, parent, amount, first_seed + offset * seed_step, seed_step)
-		if part.size() != amount:
-			return _encounter_result(ERR_CANT_CREATE, [], count, start_us)
-		for local in part:
-			local["index"] = offset + int(local["index"])
-			items.append(local)
-		if offset + amount < count:
-			await parent.get_tree().process_frame
-	return _encounter_result(OK, items, count, start_us)
+static func _release_worker(worker: PixelSpriteMonsterGenerator) -> void:
+	if is_instance_valid(worker):
+		if worker.get_parent() != null:
+			worker.get_parent().remove_child(worker)
+		worker.free()
 
 
 static func _validate_encounter(preset: CreatureGenerationPreset, parent: Node, count: int) -> Error:
@@ -95,13 +104,13 @@ static func _validate_encounter(preset: CreatureGenerationPreset, parent: Node, 
 	return OK
 
 
-static func _encounter_result(error: Error, items: Array[Dictionary], requested: int, start_us: int) -> Dictionary:
+static func _encounter_result(error: Error, items: Array[Dictionary], requested: int, started: int) -> Dictionary:
 	return {
 		"error": error,
 		"items": items,
 		"requested_count": requested,
 		"generated_count": items.size(),
-		"elapsed_ms": float(Time.get_ticks_usec() - start_us) / 1000.0
+		"elapsed_ms": float(Time.get_ticks_usec() - started) / 1000.0
 	}
 
 
