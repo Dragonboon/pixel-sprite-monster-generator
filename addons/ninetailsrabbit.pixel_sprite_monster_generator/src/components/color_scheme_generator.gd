@@ -1,5 +1,11 @@
 class_name ColorSchemeGenerator
 
+var rng: RandomNumberGenerator
+
+func _init(random_source: RandomNumberGenerator = null) -> void:
+	rng = random_source if random_source != null else RandomNumberGenerator.new()
+
+
 const golden_ratio_conjugate: float = 0.618033988749895
 
 enum ColorGenerationMethod {
@@ -12,7 +18,7 @@ func generate_random_hsv_colors(number_of_colors: int = 12, saturation: float = 
 	var colors: PackedColorArray = PackedColorArray()
 	
 	for i in number_of_colors:
-		var h = randf()
+		var h = rng.randf()
 		h += golden_ratio_conjugate
 		h = fmod(h, 1.0)
 		
@@ -22,13 +28,13 @@ func generate_random_hsv_colors(number_of_colors: int = 12, saturation: float = 
 
 # Using ideas from https://www.iquilezles.org/www/articles/palettes/palettes.htm
 func generate_random_rgb_colors(number_of_colors: int = 12, darkened_value: float = 0.2) -> PackedColorArray:
-	var a = Vector3(randf_range(0.0, 0.5), randf_range(0.0, 0.5), randf_range(0.0, 0.5))
-	var b = Vector3(randf_range(0.1, 0.6), randf_range(0.1, 0.6), randf_range(0.1, 0.6))
-	var c = Vector3(randf_range(0.15, 0.8), randf_range(0.15, 0.8), randf_range(0.15, 0.8))
-	var d = Vector3(randf_range(0.4, 0.6), randf_range(0.4, 0.6), randf_range(0.4, 0.6))
+	var a = Vector3(rng.randf_range(0.0, 0.5), rng.randf_range(0.0, 0.5), rng.randf_range(0.0, 0.5))
+	var b = Vector3(rng.randf_range(0.1, 0.6), rng.randf_range(0.1, 0.6), rng.randf_range(0.1, 0.6))
+	var c = Vector3(rng.randf_range(0.15, 0.8), rng.randf_range(0.15, 0.8), rng.randf_range(0.15, 0.8))
+	var d = Vector3(rng.randf_range(0.4, 0.6), rng.randf_range(0.4, 0.6), rng.randf_range(0.4, 0.6))
 
 	var colors: PackedColorArray = PackedColorArray()
-	var n: float = float(number_of_colors - 1.0)
+	var n: float = maxf(1.0, number_of_colors - 1.0)
 	
 	for i in number_of_colors:
 		var vec3 = Vector3(

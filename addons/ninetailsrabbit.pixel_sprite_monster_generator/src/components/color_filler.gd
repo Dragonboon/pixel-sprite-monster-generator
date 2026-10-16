@@ -3,15 +3,21 @@ class_name ColorFiller
 var main_noise: FastNoiseLite
 var secondary_noise: FastNoiseLite
 
-func _init(noise: FastNoiseLite, noise2: FastNoiseLite):
-	main_noise = noise
-	secondary_noise = noise2
+var rng: RandomNumberGenerator
+
+func _init(noise: FastNoiseLite, noise2: FastNoiseLite, random_source: RandomNumberGenerator = null):
+	rng = random_source if random_source != null else RandomNumberGenerator.new()
+	main_noise = noise.duplicate() if noise != null else FastNoiseLite.new()
+	secondary_noise = noise2.duplicate() if noise2 != null else FastNoiseLite.new()
 
 
 func fill_colors(map, colorscheme, eye_colorscheme, n_colors, outline = true) -> Dictionary:
-	main_noise.seed = randi()
-	secondary_noise.seed = randi()
-	
+	if colorscheme.is_empty() or eye_colorscheme.is_empty():
+		return {"groups": [], "negative_groups": []}
+	n_colors = clampi(n_colors, 1, mini(colorscheme.size(), eye_colorscheme.size()))
+	main_noise.seed = rng.randi()
+	secondary_noise.seed = rng.randi()
+
 	var groups = []
 	var negative_groups = []
 	
@@ -162,11 +168,11 @@ func get_color(map: Array[Variant], pos: Vector2, is_negative: bool, right, left
 				})
 
 	# highlight colors if the difference in colors between neighbours is big
-	var c_0 = colorscheme[floorf(main_noise.get_noise_2d(col_x, pos.y) * (n_colors- 1))]
-	var c_1 = colorscheme[floorf(main_noise.get_noise_2d(col_x, pos.y - 1) * (n_colors- 1))]
-	var c_2 = colorscheme[floorf(main_noise.get_noise_2d(col_x, pos.y + 1) * (n_colors- 1))]
-	var c_3 = colorscheme[floorf(main_noise.get_noise_2d(col_x - 1, pos.y) * (n_colors- 1))]
-	var c_4 = colorscheme[floorf(main_noise.get_noise_2d(col_x + 1, pos.y) * (n_colors- 1))]
+	var c_0 = colorscheme[clampi(int(floorf((main_noise.get_noise_2d(col_x, pos.y) + 1.0) * 0.5 * (n_colors - 1))), 0, n_colors - 1)]
+	var c_1 = colorscheme[clampi(int(floorf((main_noise.get_noise_2d(col_x, pos.y - 1) + 1.0) * 0.5 * (n_colors - 1))), 0, n_colors - 1)]
+	var c_2 = colorscheme[clampi(int(floorf((main_noise.get_noise_2d(col_x, pos.y + 1) + 1.0) * 0.5 * (n_colors - 1))), 0, n_colors - 1)]
+	var c_3 = colorscheme[clampi(int(floorf((main_noise.get_noise_2d(col_x - 1, pos.y) + 1.0) * 0.5 * (n_colors - 1))), 0, n_colors - 1)]
+	var c_4 = colorscheme[clampi(int(floorf((main_noise.get_noise_2d(col_x + 1, pos.y) + 1.0) * 0.5 * (n_colors - 1))), 0, n_colors - 1)]
 	var diff = ((abs(c_0.r - c_1.r) + abs(c_0.g - c_1.g) + abs(c_0.b - c_1.b)) + 
 				(abs(c_0.r - c_2.r) + abs(c_0.g - c_2.g) + abs(c_0.b - c_2.b)) + 
 				(abs(c_0.r - c_3.r) + abs(c_0.g - c_3.g) + abs(c_0.b - c_3.b)) + 

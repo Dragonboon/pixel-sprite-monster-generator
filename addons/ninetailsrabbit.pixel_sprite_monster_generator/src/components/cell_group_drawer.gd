@@ -2,7 +2,12 @@ class_name CellGroupDrawer extends Node2D
 
 var groups: Array[Variant] = []
 var negative_groups: Array[Variant] = []
-var draw_size: int = 6
+var draw_size: float = 6.0:
+	set(value):
+		draw_size = value
+		for cell in cells():
+			cell.draw_size = value
+			cell.queue_redraw()
 var animation = true:
 	set(value):
 		if value != animation:
@@ -59,7 +64,7 @@ func _ready():
 			var cell = create_cell(g, animation, groups[i].start_time, speed, smooth_lerp_factor) 
 			add_child(cell)
 		else:
-			groups.erase(g)
+			groups.remove_at(i)
 		
 	for g in negative_groups:
 		if g.valid:
@@ -85,6 +90,7 @@ func _ready():
 func create_cell(cells, cell_animation: bool, cell_lifetime: int, cell_speed: float, cell_smooth_lerp_factor: float) -> CellDrawer:
 	var cell =  CellDrawer.new()
 	cell.set_cells(cells)
+	cell.draw_size = draw_size
 	
 	cell.speed = cell_speed
 	cell.lifetime = cell_lifetime
@@ -111,15 +117,14 @@ func disable_animation():
 	animation = false
 
 
-func group_is_touching_group(g1, g2):
-	for c in g1:
-		for c2 in g2:
-			if c.position.x == c2.position.x:
-				if c.position.y == c2.position.y + 1 || c.position.y == c2.position.y - 1:
-					return true
-			elif c.position.y == c2.position.y:
-				if c.position.x == c2.position.x + 1 || c.position.x == c2.position.x - 1:
-					return true
-			
-	
+func group_is_touching_group(g1, g2) -> bool:
+	# Avoid comparing every pair of pixels when joining large colored groups.
+	var occupied: Dictionary = {}
+	for cell in g2:
+		occupied[Vector2i(cell.position)] = true
+	for cell in g1:
+		var point := Vector2i(cell.position)
+		for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			if occupied.has(point + offset):
+				return true
 	return false

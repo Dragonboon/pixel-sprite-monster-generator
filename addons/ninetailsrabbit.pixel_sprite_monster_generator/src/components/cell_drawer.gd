@@ -1,12 +1,11 @@
 class_name CellDrawer extends Node2D
 
 var cells: Array[Variant] = []
-var draw_size: int = 6
+var draw_size: float = 6.0
 var speed: float = 5.0
 var smooth_lerp_factor: float = 20.0
-var lifetime = 0
+var lifetime: float = 0.0
 var is_eye: bool = false
-var amplitude = 0
 var animation: bool = true:
 	set(value):
 		if value !=  animation:
@@ -24,7 +23,6 @@ func _enter_tree() -> void:
 
 
 func _ready():
-	amplitude = (lifetime % 5 + 2) * speed
 
 	set_process(animation)
 	
@@ -55,6 +53,8 @@ func set_speed(new_speed: float):
 
 
 func _draw():
+	if cells.is_empty():
+		return
 	var average = Vector2()
 	var size = 0
 	var eye_cutoff = 0.0

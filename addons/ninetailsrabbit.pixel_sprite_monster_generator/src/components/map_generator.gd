@@ -1,5 +1,11 @@
 class_name MapGenerator
 
+var rng: RandomNumberGenerator
+
+func _init(random_source: RandomNumberGenerator = null) -> void:
+	rng = random_source if random_source != null else RandomNumberGenerator.new()
+
+
 
 func generate_new(size: Vector2, symmetry: float) -> Array[Variant]:
 	symmetry = clampf(symmetry, 0.0, 100.0)
@@ -11,14 +17,14 @@ func generate_new(size: Vector2, symmetry: float) -> Array[Variant]:
 	
 	for x in range(ceilf(size.x * 0.5), size.x):
 		for y in size.y:
-			if randi_range(0, 100) > symmetry:
+			if rng.randi_range(0, 100) > symmetry:
 				map[x][y] = chance(0.48)
 				
 				var to_center = (abs(y - size.y * 0.5) * 2.0) / size.y
 				
 				if x == floor(size.x  *0.5) - 1 || x == floor(size.x * 0.5) - 2:
 					
-					if randf_range(0.0, 0.4) > to_center:
+					if rng.randf_range(0.0, 0.4) > to_center:
 						map[x][y] = true
 	return map
 	
@@ -39,7 +45,7 @@ func get_random_map(size: Vector2, symmetry: float):
 			var to_center: float = (absf(y - size.y * 0.5) * 2.0) / size.y
 			
 			if x == floor(size.x * 0.5) - 1 || x == floor(size.x * 0.5) - 2:
-				if randf_range(0.0, 0.4) > to_center:
+				if rng.randf_range(0.0, 0.4) > to_center:
 					arr[y] = true
 
 
@@ -50,13 +56,13 @@ func get_random_map(size: Vector2, symmetry: float):
 	
 	
 func random_walk(size: Vector2, map: Array[Variant]):
-	var pos: Vector2 = Vector2(randi() % int(size.x), randi() % int(size.y))
+	var pos: Vector2 = Vector2(rng.randi() % int(size.x), rng.randi() % int(size.y))
 	
 	for i in 100:
 		set_at_position(map, pos, true)
 		set_at_position(map, Vector2(size.x - pos.x - 1, pos.y), true)
 		
-		pos += Vector2(randi() % 3 - 1, randi() %3 - 1)
+		pos += Vector2(rng.randi() % 3 - 1, rng.randi() %3 - 1)
 	
 	
 func set_at_position(map: Array[Variant], pos: Vector2, val: bool) -> bool:
@@ -71,4 +77,4 @@ func set_at_position(map: Array[Variant], pos: Vector2, val: bool) -> bool:
 func chance(probability_chance: float = 0.5, less_than: bool = true) -> bool:
 	probability_chance = clamp(probability_chance, 0.0, 1.0)
 	
-	return randf() < probability_chance if less_than else randf() > probability_chance
+	return rng.randf() < probability_chance if less_than else rng.randf() > probability_chance

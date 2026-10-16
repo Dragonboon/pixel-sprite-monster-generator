@@ -1,59 +1,106 @@
-<div align="center">
-	<img src="icon.svg" alt="Logo" width="160" height="160">
+<p align="center"><img src="icon.svg" width="112" alt="Pixel sprite monster generator"></p>
+<h1 align="center">Pixel Sprite Monster Generator</h1>
+<p align="center">Generate varied pixel monsters in Godot 4.7, then reuse them as PNG sprites.</p>
 
-<h3 align="center">Pixel monster sprite generator</h3>
+**English** · [Español](README_ES.md) · [Validation](https://github.com/sempitern0/pixel-sprite-monster-generator/actions)
 
-  <p align="center">
-   Port to Godot 4 for the pixel sprite generator by deep-fold
-	<br />
-	·
-	<a href="https://github.com/ninetailsrabbit/pixel-sprite-monster-generator/issues/new?assignees=ninetailsrabbit&labels=%F0%9F%90%9B+bug&projects=&template=bug_report.md&title=">Report Bug</a>
-	·
-	<a href="https://github.com/ninetailsrabbit/pixel-sprite-monster-generator/issues/new?assignees=ninetailsrabbit&labels=%E2%AD%90+feature&projects=&template=feature_request.md&title=">Request Features</a>
-  </p>
-</div>
+Build monster silhouettes, colors and optional animated cell groups without drawing
+each creature by hand. This is a Godot port of
+[Deep-Fold's pixel sprite generator](https://deep-fold.itch.io/pixel-sprite-generator).
+Generation creates artwork, not gameplay logic, collision shapes or authored animations.
 
-<br>
-<br>
+## Start in minutes
 
-- [📦 Installation](#-installation)
-- [Getting started 🚀](#getting-started-)
-  - [Features 👾](#features-)
-  - [Not included yet 🗒️](#not-included-yet-️)
-- [Animated Showcase](#animated-showcase)
-- [Static showcase](#static-showcase)
+1. Use **Godot 4.7.x**; automated checks pin **4.7.2 stable**.
+2. Copy `addons/ninetailsrabbit.pixel_sprite_monster_generator/` into your project's `addons/` directory, preserving the folder name.
+3. Enable the plugin in **Project → Project Settings → Plugins**.
+4. Add a `PixelSpriteMonsterGenerator` Node2D to a scene and run it.
+5. Adjust the size, palette, symmetry and cellular automata settings, then call `draw_sprite()` to regenerate.
 
-# 📦 Installation
+Open `demo/test.tscn`, or press **F5** in this repository, for a regeneration example.
+Monster preview is runtime-only; the editor does not generate a preview automatically.
 
-1. [Download Latest Release](https://github.com/ninetailsrabbit/pixel-sprite-monster-generator/releases/latest)
-2. Unpack the `addons/ninetailsrabbit.pixel-sprite-monster-generator` folder into your `/addons` folder within the Godot project
-3. Enable this addon within the Godot settings: `Project > Project Settings > Plugins`
+## Reproducible variations
 
-To better understand what branch to choose from for which Godot version, please refer to this table:
-|Godot Version|pixel-sprite-monster-generator Branch|pixel-sprite-monster-generator Version|
-|---|---|--|
-|[![GodotEngine](https://img.shields.io/badge/Godot_4.3.x_stable-blue?logo=godotengine&logoColor=white)](https://godotengine.org/)|`4.3`|`1.x`|
-|[![GodotEngine](https://img.shields.io/badge/Godot_4.4.x_stable-blue?logo=godotengine&logoColor=white)](https://godotengine.org/)|`main`|`1.x`|
+```gdscript
+@onready var monster: PixelSpriteMonsterGenerator = $PixelSpriteMonsterGenerator
 
-# Getting started 🚀
+func _ready() -> void:
+    monster.randomize_seed = false
+    monster.manual_seed = 42
+    monster.cell_animation = false
+    monster.draw_sprite()
+    var error := monster.export_png("user://monster_42.png")
+    if error != OK:
+        push_warning(error_string(error))
+```
 
-This project brings the [Pixel sprite generator](https://deep-fold.itch.io/pixel-sprite-generator) created by the user [Deep-Fold](https://github.com/Deep-Fold) to the Godot 4 version.
+For random generation, leave **Randomize Seed** enabled and save `last_seed` with
+all generation settings. Disable randomization and assign that seed to replay the
+result. Regeneration preserves game-owned child nodes, uses local randomness and
+does not modify noise resources shared with other instances.
 
-## Features 👾
+| Setting | Effect |
+| --- | --- |
+| Sprite Size | Logical pixel grid; each dimension is normalized to 4–256 |
+| Sprite Draw Size | Display scale; does not change the exported pixel grid |
+| Pixel Perfect | Draws each cell as one pixel, ignoring display scaling |
+| Symmetry | 100 gives a mirrored silhouette; lower values introduce variation |
+| Steps / Birth Limit / Death Limit | Cellular automata smoothing; steps are limited to 0–20 |
+| Number of Colors | Generated palette size, normalized to 1–64 |
+| Custom Color Palette | `PixelSpriteMonsterGeneratorColorPalette`; nonempty palettes override generated body/eye palettes |
+| Eye Color Saturation / Value | Independent eye palette controls in HSV mode |
+| Main / Secondary Noise | Body/eye color patterns; copied internally, with defaults if omitted |
+| Cell Animation | Optional movement of groups; disable for a static sprite |
 
-- **Create monsters directly in your scene:** Generate unique pixel art monsters at runtime using a dedicated node in your Godot scene tree.
-- **Customize with ease:** Exportable parameters allow you to fine-tune the monster generation process, tailoring them to your specific needs.
-- **One node, one monster:** Each node represents a single monster, making your scene organization and workflow efficient
+Different seeds are not guaranteed to produce equally readable monsters. Generate a
+small selection and keep the silhouettes that fit your game. Larger grids cost more;
+benchmark generation on your target device rather than generating many creatures
+in a single gameplay frame.
 
-## Not included yet 🗒️
+## Export and reuse
 
-- **_Monster preview in the editor_**
-- **_Export to image_**
+`get_image()` returns a transparent RGBA image in a **neutral, unanimated pose**.
+Its size is `Sprite Size + 2` on each axis: one pixel of padding accommodates outlines.
+`export_png(path)` saves that same image and returns a Godot `Error`. The parent
+directory must exist. `user://` is appropriate for exported games.
 
-# Animated Showcase
+```gdscript
+var image := monster.get_image()
+if image != null:
+    $Sprite2D.texture = ImageTexture.create_from_image(image)
+```
 
-![animated_showcase](images/animated_showcase.gif)
+CPU image export also works under `--headless`. It does not capture the screen,
+other nodes, display scaling, group animation or a sprite sheet. Use nearest-neighbor
+texture filtering when importing PNGs for pixel-art games. `clear()` removes only
+the generated drawing; after clearing, `get_image()` returns `null` until regeneration.
 
-# Static showcase
+## Compatibility and validation
 
-![animated_showcase](images/static_showcase.gif)
+Version **1.1.0** targets Godot 4.7. Existing addon and resource paths are retained.
+Seed output can differ from older versions because noise/color handling and RNG
+isolation were corrected. Repeatability applies to the same generator implementation
+and settings, not indefinitely across engine or algorithm upgrades.
+
+```sh
+python3 scripts/run_tests.py --godot /path/to/godot
+# Optional real-renderer pass, with a desktop display:
+python3 scripts/run_tests.py --godot /path/to/godot --render
+```
+
+Checks cover script loading, repeated regeneration, authored child preservation,
+random-stream isolation, fixed/random seed replay, scale, odd-sized symmetry,
+one-color palettes, independent eye colors, invalid sizes and PNG round trips.
+Linux automated tests do not certify Windows, macOS or mobile hardware behavior.
+
+## Examples and credits
+
+![Animated monster examples](images/animated_showcase.gif)
+
+Original visual algorithms by [Deep-Fold](https://github.com/Deep-Fold).
+Godot port originally published by Ninetailsrabbit, maintained in this repository.
+See [LICENSE](LICENSE) and preserve applicable attribution when redistributing.
+
+[Report a problem](https://github.com/sempitern0/pixel-sprite-monster-generator/issues)
+with your seed, settings, Godot version and platform.

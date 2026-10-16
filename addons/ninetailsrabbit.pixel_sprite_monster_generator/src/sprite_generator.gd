@@ -45,7 +45,7 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 			cell_smooth_lerp_factor = value
 			update_group_drawer()
 @export_category("Color scheme")
-@export var custom_color_palette: ColorPalette
+@export var custom_color_palette: PixelSpriteMonsterGeneratorColorPalette
 ## The method to generate the colors, rgb is more random and hsv keeps a consistency on the color palette generated
 @export var color_generation_method: ColorSchemeGenerator.ColorGenerationMethod = ColorSchemeGenerator.ColorGenerationMethod.GoldenRatioHSV
 @export var color_saturation: float = 0.5
@@ -67,6 +67,10 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 @export var death_limit: int = 4
 
 
+## Seed used for the most recent generation; save it to reproduce a random result.
+var last_seed: int = 0
+var rng := RandomNumberGenerator.new()
+
 var map_generator: MapGenerator
 var cellular_automata: CellularAutomata
 var color_scheme_generator: ColorSchemeGenerator
@@ -78,29 +82,27 @@ var eye_scheme: PackedColorArray
 var all_color_groups: Dictionary = {}
 
 
-func _enter_tree() -> void:
-	map_generator = MapGenerator.new()
-	cellular_automata = CellularAutomata.new(steps, birth_limit, death_limit)
-	color_scheme_generator = ColorSchemeGenerator.new()
-	color_filler = ColorFiller.new(main_noise, secondary_noise)
-
-
 func _ready() -> void:
-	assert(main_noise != null, "PixelSpriteMonsterGenerator: This generator needs a main noise (FastNoiseLite) to fill the colors in the generated monster")
-	assert(secondary_noise != null, "PixelSpriteMonsterGenerator: This generator needs a secondary noise (FastNoiseLite) to fill the negative colors in the generated monster")
-	
 	draw_sprite()
 
 
 func draw_sprite() -> void:
 	clear()
 	
-	seed(randi() if randomize_seed else manual_seed)
-	
+	# Validate before allocating a map; isolate RNG and noise from the host game.
+	sprite_size = Vector2(clampi(int(sprite_size.x), 4, 256), clampi(int(sprite_size.y), 4, 256))
+	number_of_colors = clampi(number_of_colors, 1, 64)
 	if randomize_seed:
-		main_noise.seed = randi()
-		secondary_noise.seed = randi()
-	
+		rng.randomize()
+		last_seed = rng.seed
+	else:
+		last_seed = manual_seed
+	rng.seed = last_seed
+	map_generator = MapGenerator.new(rng)
+	cellular_automata = CellularAutomata.new(clampi(steps, 0, 20), clampi(birth_limit, 0, 8), clampi(death_limit, 0, 8))
+	color_scheme_generator = ColorSchemeGenerator.new(rng)
+	color_filler = ColorFiller.new(main_noise, secondary_noise, rng)
+
 	var map: Array[Variant] = map_generator.generate_new(sprite_size, symmetry)
 	map = cellular_automata.do_steps(map)
 	
@@ -117,7 +119,7 @@ func draw_sprite() -> void:
 			scheme = color_scheme_generator.generate_random_rgb_colors(num_of_colors)
 		
 		if _eye_color_generation_is_hsv():
-			eye_scheme = color_scheme_generator.generate_random_hsv_colors(num_of_colors, color_saturation, color_value)
+			eye_scheme = color_scheme_generator.generate_random_hsv_colors(num_of_colors, eye_color_saturation, eye_color_value)
 		elif _eye_color_generation_is_random_rgb():
 			eye_scheme = color_scheme_generator.generate_random_rgb_colors(num_of_colors)
 			
@@ -127,7 +129,7 @@ func draw_sprite() -> void:
 
 
 func update_group_drawer() -> void:
-	if cell_group_drawer == null:
+	if not is_instance_valid(cell_group_drawer):
 		cell_group_drawer = CellGroupDrawer.new()
 	
 	if all_color_groups.is_empty():
@@ -136,7 +138,7 @@ func update_group_drawer() -> void:
 	cell_group_drawer.position = Vector2.ZERO
 	cell_group_drawer.groups = all_color_groups.groups
 	cell_group_drawer.negative_groups = all_color_groups.negative_groups
-	cell_group_drawer.draw_size = 1 if pixel_perfect else min((sprite_draw_size.x / sprite_size.x), (sprite_draw_size.y / sprite_size.y))
+	cell_group_drawer.draw_size = 1 if pixel_perfect else maxf(0.01, minf(sprite_draw_size.x / sprite_size.x, sprite_draw_size.y / sprite_size.y))
 	cell_group_drawer.animation = cell_animation
 	cell_group_drawer.horizontal_animation = cell_horizontal_animation
 	cell_group_drawer.vertical_animation = cell_vertical_animation
@@ -148,8 +150,10 @@ func update_group_drawer() -> void:
 	
 	
 func clear() -> void:
-	for child in get_children():
-		child.free()
+	if is_instance_valid(cell_group_drawer):
+		cell_group_drawer.free()
+	cell_group_drawer = null
+	all_color_groups.clear()
 
 
 #region Helpers
@@ -173,3 +177,35 @@ func _set_owner_to_edited_scene_root(node: Node) -> void:
 	if Engine.is_editor_hint() and node.get_tree():
 		node.owner = node.get_tree().edited_scene_root
 #endregion
+
+
+## Static, unscaled sprite in its neutral pose, with one transparent pixel of padding.
+## Animation is deliberately not baked into the image. Works without a renderer.
+func get_image() -> Image:
+	if not is_instance_valid(cell_group_drawer) or cell_group_drawer.cells().is_empty():
+		return null
+	var result := Image.create(int(sprite_size.x) + 2, int(sprite_size.y) + 2, false, Image.FORMAT_RGBA8)
+	result.fill(Color.TRANSPARENT)
+	for drawer in cell_group_drawer.cells():
+		var center := Vector2.ZERO
+		for cell in drawer.cells:
+			center += cell.position
+		center /= maxf(1.0, drawer.cells.size())
+		var eye_radius := sqrt(float(drawer.cells.size())) * 0.3
+		for cell in drawer.cells:
+			var point := Vector2i(cell.position) + Vector2i.ONE
+			if point.x < 0 or point.y < 0 or point.x >= result.get_width() or point.y >= result.get_height():
+				continue
+			var color: Color = cell.color
+			if drawer.is_eye and center.distance_to(cell.position) < eye_radius:
+				color = color.darkened(0.85)
+			result.set_pixelv(point, color)
+	return result
+
+
+## Use user:// in exported games. Parent directory must already exist.
+func export_png(path: String) -> Error:
+	var result := get_image()
+	if result == null:
+		return ERR_UNCONFIGURED
+	return result.save_png(path)
