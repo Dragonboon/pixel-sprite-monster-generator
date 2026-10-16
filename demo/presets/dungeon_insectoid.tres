@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CreatureGenerationPreset" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/pixel_sprite_monster_generator/src/components/creature_generation_preset.gd" id="1_preset"]
+[ext_resource type="Script" path="res://addons/pixel_sprite_monster_generator/src/components/creature_anatomy_profile.gd" id="2_profile"]
+
+[sub_resource type="Resource" id="Profile"]
+script = ExtResource("2_profile")
+body_width_min = 0.28
+body_width_max = 0.42
+body_height_min = 0.48
+body_height_max = 0.68
+head_min = 0.13
+head_max = 0.21
+appendage_min = 0.24
+appendage_max = 0.38
+
+[resource]
+script = ExtResource("1_preset")
+creature_archetype = 2
+anatomy_profile = SubResource("Profile")
+silhouette_mood = 2
+visual_style = 3
+shading_strength = 0.85
+dithering_strength = 0.35
+quality_enabled = true
+quality_min_score = 67.0
