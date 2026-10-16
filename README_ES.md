@@ -220,3 +220,11 @@ if encuentro["error"] == OK and encuentro["generated_count"] == 8:
 `generate_encounter_async()` cede un fotograma entre tandas de 1–16 criaturas; cada tanda sigue calculándose de forma síncrona. La alternativa `generate_encounter()` es útil para herramientas. Ajusta el tamaño de la tanda según el dispositivo. El plugin no incorpora estadísticas, IA ni colocación de enemigos. `elapsed_ms` sirve como medición orientativa, no como benchmark universal.
 
 La demo F5 incorpora **cantidad configurable de 1 a 128**, familias variadas o específicas (incluye Cuadrúpedo, Gólem y Espíritu), presets de ejemplo, favoritos, filtro de favoritos, puntuaciones, tiempos y exportación PNG+JSON. Al guardar correctamente muestra cuántas imágenes se han creado y su directorio completo; los errores se notifican visiblemente. Los favoritos duran solo durante la sesión. Con cantidades grandes puede aumentar el consumo de CPU/memoria. Las vistas proyectadas siguen siendo experimentales.
+
+## Rendimiento y diagnóstico de variedad
+
+La galería de la demo genera progresivamente, cede un fotograma cada cuatro criaturas, muestra el progreso y abandona resultados de una solicitud antigua si se cambian los parámetros. El botón **Benchmark 1 / 8 / 32 / 128** permite medir tiempos, bytes RGBA aproximados y variedad de siluetas con el preset/familia seleccionados.
+
+`CreatureVariety.summarize(items)` añade `novelty` y `near_duplicate` a los resultados y resume imágenes exactas, siluetas aproximadamente distintas, duplicados cercanos y novedad media. Compara máscaras de transparencia normalizadas a 12×12, ignorando la paleta: cambiar solo el color no aumenta la variedad de silueta. Se trata de una **métrica orientativa**, no de una evaluación artística. No descarta criaturas ni modifica la cantidad solicitada.
+
+La memoria indicada contabiliza únicamente los bytes RGBA de las imágenes, no los nodos, texturas, memoria total del proceso ni recolector de basura de Godot. Mide también en el hardware de destino y reduce calidad/intentos para generar enemigos durante el juego.
