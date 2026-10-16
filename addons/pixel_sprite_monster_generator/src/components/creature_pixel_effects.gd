@@ -49,9 +49,27 @@ static func process(source: Image, style: Style, view: View, shade: float, dithe
 					var level: float = floorf(luma * 3.99) / 3.0
 					color = Color(0.12 + 0.55 * level, 0.19 + 0.62 * level, 0.12 + 0.36 * level, color.a)
 				Style.DUNGEON:
-					color = Color(color.r * 0.75, color.g * 0.64, color.b * 0.78, color.a)
+					# Cool near-black shadows and tightly contained highlights.
+					var low: float = clampf(color.r * 0.22 + color.g * 0.62 + color.b * 0.16, 0.0, 1.0)
+					var shadow: float = 0.42 if not lower or not right else 1.0
+					color = Color(
+						(0.035 + color.r * 0.34 + low * 0.09) * shadow,
+						(0.055 + color.g * 0.26 + low * 0.08) * shadow,
+						(0.095 + color.b * 0.47 + low * 0.12) * shadow,
+						color.a
+					)
+					if not upper and upper != lower:
+						color = color.lightened(0.1)
 				Style.COZY:
-					color = color.lightened(0.13)
+					# Warm pastels and generous light midtones. Dark outlines soften.
+					var brightness: float = color.r * 0.3 + color.g * 0.59 + color.b * 0.11
+					var pastel: Color = Color(
+						0.53 + color.r * 0.40,
+						0.45 + color.g * 0.45,
+						0.44 + color.b * 0.44,
+						color.a
+					)
+					color = pastel.lerp(Color(1.0, 0.88, 0.74, color.a), clampf(brightness * 0.20, 0.0, 0.2))
 				Style.ARCADE:
 					color = Color(clampf(color.r * 1.16, 0.0, 1.0), clampf(color.g * 1.12, 0.0, 1.0), clampf(color.b * 1.18, 0.0, 1.0), color.a)
 				Style.JRPG:

@@ -137,6 +137,13 @@ func run() -> void:
 	assert(generator.quality_accepted and generator.last_quality_attempts == 1)
 	generator.quality_enabled = false
 	generator.silhouette_mood = CreatureMood.Mood.NORMAL
+	# Artistic styles should differ in tonal range, not merely hue.
+	var reference := Image.create(12, 12, false, Image.FORMAT_RGBA8)
+	reference.fill(Color(0.47, 0.38, 0.59))
+	var cozy := CreaturePixelEffects.process(reference, CreaturePixelEffects.Style.COZY, CreaturePixelEffects.View.FRONT, 0.6, 0.0, 0.0, 12)
+	var dungeon := CreaturePixelEffects.process(reference, CreaturePixelEffects.Style.DUNGEON, CreaturePixelEffects.View.FRONT, 0.6, 0.0, 0.0, 12)
+	assert(cozy.get_data() != dungeon.get_data(), "Distinct art styles must differ visibly")
+	assert(cozy.get_pixel(5, 5).get_luminance() > dungeon.get_pixel(5, 5).get_luminance() + 0.25)
 	# Pixel effects preserve logical resolution and deterministic CPU-only PNG exports.
 	generator.visual_style = CreaturePixelEffects.Style.HANDHELD
 	generator.view_mode = CreaturePixelEffects.View.THREE_QUARTER
