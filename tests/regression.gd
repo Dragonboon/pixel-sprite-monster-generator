@@ -220,6 +220,22 @@ func run() -> void:
 	assert(diversity["near_duplicates"] == 1)
 	assert(diversity["exact_unique"] == 3)
 	assert(is_equal_approx(CreatureVariety.distance(CreatureVariety.signature(v0), CreatureVariety.signature(v1)), 0.0))
+	# Sparse or detached components must score worse than an equivalent solid body.
+	var filled: Array[Variant] = []
+	var fragmented: Array[Variant] = []
+	for x in 24:
+		var solid_col: Array = []
+		var sparse_col: Array = []
+		for y in 24:
+			var inside: bool = x >= 4 and x < 20 and y >= 4 and y < 20
+			solid_col.append(inside)
+			sparse_col.append(inside and (x % 3 == 0 or y % 3 == 0))
+		filled.append(solid_col)
+		fragmented.append(sparse_col)
+	var solid_quality: Dictionary = CreatureQuality.measure(filled)
+	var broken_quality: Dictionary = CreatureQuality.measure(fragmented)
+	assert(solid_quality["score"] > broken_quality["score"])
+	assert(broken_quality.has("components") and broken_quality.has("occupancy"))
 	# Isolated batch generation does not mutate or delete the live preview.
 	var authoring := CreatureGenerationPreset.new()
 	authoring.quality_max_attempts = 2
