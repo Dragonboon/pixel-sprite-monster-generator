@@ -32,6 +32,9 @@ var saved_favorites: Dictionary = {}
 var current_items: Array[Dictionary] = []
 var current_preset: CreatureGenerationPreset
 var export_button: Button
+var run_id: int = 0
+var progress: ProgressBar
+var benchmark_button: Button
 
 
 func _ready() -> void:
@@ -147,6 +150,13 @@ func _ready() -> void:
 	gallery.add_theme_constant_override("h_separation", 12)
 	gallery.add_theme_constant_override("v_separation", 12)
 	scroll.add_child(gallery)
+	progress = ProgressBar.new()
+	progress.show_percentage = true
+	layout.add_child(progress)
+	benchmark_button = Button.new()
+	benchmark_button.text = "Benchmark 1 / 8 / 32 / 128"
+	benchmark_button.pressed.connect(_benchmark)
+	controls.add_child(benchmark_button)
 	status_label = Label.new()
 	layout.add_child(status_label)
 	_regenerate()
@@ -165,39 +175,65 @@ func _new_seed() -> void:
 
 
 func _regenerate() -> void:
+	run_id += 1
+	var own_id: int = run_id
 	current_items.clear()
 	rendered_images.clear()
+	progress.value = 0
 	var requested: int = int(count_input.value)
+	progress.max_value = requested
 	var initial_seed: int = int(seed_input.value)
 	var started: int = Time.get_ticks_usec()
-	var all_presets: Array[CreatureGenerationPreset] = []
+	_show_status("Generating %d creatures..." % requested, false)
 	for index in requested:
-		var preset := _build_preset(index)
-		all_presets.append(preset)
-	var tasks: Array[Dictionary] = []
-	# Mixed archetypes retain different anatomy for each member, while batches
-	# with a fixed family use the stable public RPG encounter API.
-	if family_selector.selected > 0 or preset_selector.selected > 0:
-		var encounter: Dictionary = await CreatureBatchGenerator.generate_encounter_async(all_presets[0], self, requested, initial_seed, CreatureBatchGenerator.DEFAULT_SEED_STEP, 4)
-		if encounter["error"] != OK:
-			_show_status("Generation failed: " + error_string(int(encounter["error"])), true)
+		if own_id != run_id:
 			return
-		tasks = encounter["items"]
-	else:
-		for index in requested:
-			var piece: Dictionary = CreatureBatchGenerator.generate_encounter(all_presets[index], self, 1, initial_seed + index * CreatureBatchGenerator.DEFAULT_SEED_STEP)
-			if piece["error"] != OK or piece["generated_count"] != 1:
-				_show_status("Generation failed for creature %d" % [index + 1], true)
-				return
-			var item: Dictionary = piece["items"][0]
-			item["index"] = index
-			tasks.append(item)
-	current_items = tasks
+		var chosen_preset: CreatureGenerationPreset = _build_preset(index)
+		var part: Array[Dictionary] = CreatureBatchGenerator.generate(chosen_preset, self, 1, initial_seed + index * CreatureBatchGenerator.DEFAULT_SEED_STEP)
+		if part.size() != 1:
+			_show_status("Generation failed at #%d" % [index + 1], true)
+			return
+		var item: Dictionary = part[0]
+		item["index"] = index
+		current_items.append(item)
+		progress.value = index + 1
+		if (index + 1) % 4 == 0 or index + 1 == requested:
+			_show_status("Generating %d/%d..." % [index + 1, requested], false)
+			await get_tree().process_frame
+	if own_id != run_id:
+		return
+	var diversity: Dictionary = CreatureVariety.summarize(current_items)
 	for item in current_items:
 		rendered_images.append(item["image"])
 	_render_gallery()
 	var elapsed: float = float(Time.get_ticks_usec() - started) / 1000.0
-	_show_status("Generated %d/%d creatures in %.0f ms (%.1f ms/creature). Select favorites or export." % [current_items.size(), requested, elapsed, elapsed / float(maxi(1, requested))], false)
+	_show_status("Generated %d in %.0f ms (%.1f ms/creature) · unique silhouettes %d/%d · near duplicates %d" % [requested, elapsed, elapsed / float(requested), int(diversity["silhouette_unique"]), requested, int(diversity["near_duplicates"])], false)
+
+
+func _benchmark() -> void:
+	run_id += 1
+	var own_id: int = run_id
+	benchmark_button.disabled = true
+	var summaries: Array[String] = []
+	for amount in [1, 8, 32, 128]:
+		if own_id != run_id:
+			benchmark_button.disabled = false
+			return
+		_show_status("Benchmarking %d creatures..." % amount, false)
+		var preset: CreatureGenerationPreset = _build_preset(0)
+		var result: Dictionary = await CreatureBatchGenerator.generate_encounter_async(preset, self, amount, 4300, CreatureBatchGenerator.DEFAULT_SEED_STEP, 4)
+		if result["error"] != OK:
+			_show_status("Benchmark failed at %d: %s" % [amount, error_string(int(result["error"]))], true)
+			benchmark_button.disabled = false
+			return
+		var diversity: Dictionary = CreatureVariety.summarize(result["items"])
+		var estimated_bytes: int = 0
+		for item in result["items"]:
+			estimated_bytes += item["image"].get_data().size()
+		summaries.append("%d: %.0fms, %.1f MiB, unique %d" % [amount, float(result["elapsed_ms"]), float(estimated_bytes) / 1048576.0, int(diversity["silhouette_unique"])])
+	if own_id == run_id:
+		_show_status("Benchmark (RGBA bytes only): " + " | ".join(summaries), false)
+	benchmark_button.disabled = false
 
 
 func _build_preset(index: int) -> CreatureGenerationPreset:
