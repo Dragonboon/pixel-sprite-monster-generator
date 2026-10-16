@@ -199,6 +199,29 @@ func run() -> void:
 	generator.draw_sprite()
 	assert(generator.get_image().get_data() == effect_pixels)
 	assert(generator.export_png("user://styled-monster-test.png") == OK)
+	# Isolated batch generation does not mutate or delete the live preview.
+	var authoring := CreatureGenerationPreset.new()
+	authoring.quality_max_attempts = 2
+	authoring.quality_min_score = 0.0
+	authoring.creature_archetype = CreatureMorphology.Archetype.SLIME
+	authoring.anatomy_profile = CreatureAnatomyProfile.new()
+	var preserved: PackedByteArray = generator.get_image().get_data()
+	var batch: Array[Dictionary] = CreatureBatchGenerator.generate(authoring, root, 3, 2500)
+	assert(batch.size() == 3)
+	assert(batch[0]["requested_seed"] == 2500)
+	assert(batch[1]["requested_seed"] == 10419)
+	assert(batch[0]["image"] is Image)
+	assert(generator.get_image().get_data() == preserved)
+	var batch_repeat: Array[Dictionary] = CreatureBatchGenerator.generate(authoring, root, 3, 2500)
+	for i in batch.size():
+		assert(batch[i]["image"].get_data() == batch_repeat[i]["image"].get_data())
+		assert(batch[i]["selected_seed"] == batch_repeat[i]["selected_seed"])
+	assert(CreatureBatchGenerator.generate(authoring, root, 0, 2500).is_empty())
+	assert(CreatureBatchGenerator.generate(null, root, 3, 2500).is_empty())
+	assert(CreatureBatchGenerator.export_pngs(batch, "user://creature-batch-test", "batch") == OK)
+	var manifest := JSON.parse_string(FileAccess.get_file_as_string("user://creature-batch-test/batch_manifest.json"))
+	assert(manifest is Dictionary and manifest["count"] == 3)
+	assert(Image.load_from_file("user://creature-batch-test/batch_01_2500.png").get_size() == batch[0]["image"].get_size())
 	generator.clear()
 	assert(is_instance_valid(authored))
 	assert(generator.get_image() == null)

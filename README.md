@@ -189,3 +189,17 @@ A null profile retains the pre-1.5 anatomy path. This is an initial connected-sh
 The laboratory has Front, left/right 3/4, left/right Profile, Back (mirrored), and experimental Isometric 2D views. These are deterministic **image-space projections**, not distinct true 3D viewpoints or regenerated body anatomy. Existing front/3/4 scene values are retained. Use **Compare with Front** in the F5 gallery to view the selected projection beside its front-facing baseline at the same seed, mood, palette and silhouette. PNG export saves the selected view, not the comparison pair.
 
 With an optional `anatomy_profile`, quality selection now blends basic shape metrics (65%) with a heuristic anatomy score (35%). `last_anatomy_metrics` contains `score`, `body_coverage`, `appendage_balance`, and `base_support`. Metrics use the bounded sampled proportions and simple pixel counts, not true limb recognition. If no profile is supplied, the original quality metric remains unchanged. The gallery exposes an **Anatomy profile** checkbox and displays Q and A values to help compare candidates. A/B view comparison never rerolls the candidate seed.
+
+## Reusable presets and bounded batches
+
+Create a `CreatureGenerationPreset` resource with Godot's Inspector (or use the examples in `demo/presets/`). The preset stores geometry, anatomy, mood, palette, finish, quality and selection options, independently from any random seed.
+
+```gdscript
+var preset: CreatureGenerationPreset = load("res://demo/presets/cozy_slime.tres")
+var results: Array[Dictionary] = CreatureBatchGenerator.generate(preset, self, 6, 4200)
+var error := CreatureBatchGenerator.export_pngs(results, "user://creatures", "cozy")
+```
+
+`generate()` uses a disposable generator and leaves the existing scene unchanged; it requires a parent already in the scene tree and produces **up to 16 sprites per call**. Each result contains an Image, requested and selected seeds, quality score/acceptance/attempts and sampled anatomical data. Fixed seeds, settings and generator version reproduce the same images. The batch exporter creates its destination folder, writes native-resolution PNGs and a JSON manifest. Output paths must begin with `user://` or `res://`; existing matching filenames are overwritten. Store the preset resource alongside the manifest if exact future replay matters. The manifest does not serialize resource references or the full generator version.
+
+The optional projections remain experimental. Batch generation is synchronous and should run outside time-sensitive gameplay frames, particularly with high resolution or many quality attempts.

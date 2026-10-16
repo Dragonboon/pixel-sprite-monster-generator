@@ -185,3 +185,17 @@ El perfil nulo conserva el funcionamiento anterior. Este sistema inicial constru
 La demo incorpora vistas Front, 3/4 a izquierda y derecha, perfiles laterales, Back (reflejo) e Isometric 2D experimental. Son **proyecciones de imagen**, no rotaciones reales de una criatura 3D ni una reconstrucción de su anatomía. Se mantienen los valores guardados de Front y 3/4. Activa **Compare with Front** para comparar en paralelo la vista seleccionada con su frontal, usando idéntica semilla, silueta, mood y paleta. La exportación guarda únicamente la vista seleccionada.
 
 Cuando existe `anatomy_profile`, la puntuación de calidad combina geometría general (65 %) y anatomía heurística (35 %). Consulta `last_anatomy_metrics`: `score`, `body_coverage`, `appendage_balance` y `base_support`. Son aproximaciones basadas en píxeles, no un reconocimiento semántico de extremidades. Sin perfil, se mantiene la métrica anterior. La galería dispone del interruptor **Anatomy profile** y muestra los valores Q y A. La comparación A/B no cambia la semilla generada.
+
+## Presets reutilizables y generación por lotes
+
+Crea un recurso `CreatureGenerationPreset` desde el Inspector (o utiliza los ejemplos de `demo/presets/`). Incluye geometría, anatomía, mood, paleta, acabado y calidad, sin guardar una semilla aleatoria concreta.
+
+```gdscript
+var preset: CreatureGenerationPreset = load("res://demo/presets/cozy_slime.tres")
+var resultados: Array[Dictionary] = CreatureBatchGenerator.generate(preset, self, 6, 4200)
+var error := CreatureBatchGenerator.export_pngs(resultados, "user://criaturas", "cozy")
+```
+
+La generación utiliza un nodo temporal y **no modifica la criatura que ya se muestra**. El nodo padre debe pertenecer al árbol de escenas. Cada llamada produce hasta **16 sprites** y devuelve imágenes, semillas iniciales y elegidas, puntuaciones, número de intentos y metadatos anatómicos. La exportación crea la carpeta de destino, archivos PNG en resolución nativa y un manifiesto JSON. Admite rutas `user://` y `res://`; los nombres existentes se sobrescriben. Conserva también el recurso del preset y la versión del plugin para reproducir exactamente el lote: el manifiesto no incluye todas las referencias de recursos.
+
+Las vistas proyectadas siguen siendo experimentales. La generación es síncrona; evita ejecutar lotes grandes en fotogramas críticos de juegos o móviles.
