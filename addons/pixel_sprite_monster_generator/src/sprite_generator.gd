@@ -100,6 +100,7 @@ var last_seed: int = 0
 var last_quality_score: float = 0.0
 var last_quality_attempts: int = 0
 var quality_accepted: bool = true
+var last_anatomy_metrics: Dictionary = {}
 var rng := RandomNumberGenerator.new()
 
 var map_generator: MapGenerator
@@ -136,6 +137,9 @@ func draw_sprite() -> void:
 	var best_mask: Array[Variant] = []
 	var attempts: int = clampi(quality_max_attempts, 1, 32) if quality_enabled else 1
 	quality_accepted = false
+	last_anatomy_metrics = {}
+	var best_anatomy: Dictionary = {}
+	var best_anatomy_metrics: Dictionary = {}
 	for attempt in attempts:
 		var candidate_seed: int = first_seed + attempt * 7919
 		rng.seed = candidate_seed
@@ -158,17 +162,25 @@ func draw_sprite() -> void:
 			candidate = CreatureMood.apply(candidate, silhouette_mood, candidate_seed)
 		var measurement: Dictionary = CreatureQuality.measure(candidate)
 		var score: float = float(measurement["score"])
+		var anatomy_measurement: Dictionary = {}
+		if anatomy_profile != null and creature_archetype != CreatureMorphology.Archetype.ORIGINAL:
+			anatomy_measurement = CreatureAnatomyMetrics.evaluate(candidate, creature_archetype, last_anatomy)
+			score = score * 0.65 + float(anatomy_measurement["score"]) * 0.35
 		last_quality_attempts = attempt + 1
 		if score > best_score:
 			best_score = score
 			best_seed = candidate_seed
 			best_mask = candidate
 			best_state = rng.state
+			best_anatomy = last_anatomy.duplicate(true)
+			best_anatomy_metrics = anatomy_measurement.duplicate(true)
 		if not quality_enabled or score >= quality_min_score:
 			quality_accepted = true
 			break
 	last_seed = best_seed
 	last_quality_score = best_score
+	last_anatomy = best_anatomy
+	last_anatomy_metrics = best_anatomy_metrics
 	rng.seed = best_seed
 	rng.state = best_state
 	color_scheme_generator = ColorSchemeGenerator.new(rng)

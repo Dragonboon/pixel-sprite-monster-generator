@@ -170,6 +170,24 @@ func run() -> void:
 		assert(projection.get_data() == CreaturePixelEffects.project(view_source, view).get_data())
 	assert(CreaturePixelEffects.project(view_source, CreaturePixelEffects.View.PROFILE_LEFT).get_data() != view_source.get_data())
 	assert(CreaturePixelEffects.project(view_source, CreaturePixelEffects.View.ISOMETRIC).get_data() != view_source.get_data())
+	# Profiles opt into combined geometric and anatomy-specific quality scores.
+	generator.visual_style = CreaturePixelEffects.Style.CLASSIC
+	generator.view_mode = CreaturePixelEffects.View.FRONT
+	generator.anatomy_profile = CreatureAnatomyProfile.new()
+	generator.creature_archetype = CreatureMorphology.Archetype.WINGED
+	generator.quality_enabled = true
+	generator.quality_min_score = 68.0
+	generator.quality_max_attempts = 3
+	generator.manual_seed = 5151
+	generator.draw_sprite()
+	assert(generator.last_anatomy_metrics.has("score"))
+	var metrics_before: Dictionary = generator.last_anatomy_metrics.duplicate(true)
+	var quality_before: float = generator.last_quality_score
+	generator.draw_sprite()
+	assert(generator.last_anatomy_metrics == metrics_before)
+	assert(is_equal_approx(generator.last_quality_score, quality_before))
+	generator.quality_enabled = false
+	generator.anatomy_profile = null
 	# Pixel effects preserve logical resolution and deterministic CPU-only PNG exports.
 	generator.visual_style = CreaturePixelEffects.Style.HANDHELD
 	generator.view_mode = CreaturePixelEffects.View.THREE_QUARTER

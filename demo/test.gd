@@ -21,6 +21,8 @@ var quality_slider: HSlider
 var shade_slider: HSlider
 var view_selector: OptionButton
 var active_style: int = 0
+var anatomy_profile: CreatureAnatomyProfile
+var anatomy_enabled: CheckBox
 
 
 func _ready() -> void:
@@ -29,6 +31,7 @@ func _ready() -> void:
 	generator.visible = false
 	generator.cell_animation = false
 	generator.randomize_seed = false
+	anatomy_profile = CreatureAnatomyProfile.new()
 	add_child(generator)
 
 	var layout := VBoxContainer.new()
@@ -64,9 +67,13 @@ func _ready() -> void:
 		style_selector.add_item(item)
 	art_controls.add_child(style_selector)
 	view_selector = OptionButton.new()
-	for item in ["Front", "3/4 experimental"]:
+	for item in ["Front", "3/4 left", "3/4 right", "Profile left", "Profile right", "Back (mirror)", "Isometric 2D"]:
 		view_selector.add_item(item)
 	art_controls.add_child(view_selector)
+	anatomy_enabled = CheckBox.new()
+	anatomy_enabled.text = "Anatomy profile"
+	anatomy_enabled.button_pressed = true
+	art_controls.add_child(anatomy_enabled)
 	var quality_label := Label.new()
 	quality_label.text = "Min quality"
 	art_controls.add_child(quality_label)
@@ -89,6 +96,7 @@ func _ready() -> void:
 	mood_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	style_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	view_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
+	anatomy_enabled.toggled.connect(func(_v: bool) -> void: _regenerate())
 	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	shade_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	var scroll := ScrollContainer.new()
@@ -133,6 +141,7 @@ func _regenerate() -> void:
 		generator.creature_archetype = preset["anatomy"]
 		generator.anatomy_strength = 0.95
 		generator.facial_eyes = true
+		generator.anatomy_profile = anatomy_profile if anatomy_enabled.button_pressed else null
 		generator.silhouette_mood = mood_selector.selected
 		generator.quality_enabled = true
 		generator.quality_min_score = quality_slider.value
@@ -152,7 +161,7 @@ func _regenerate() -> void:
 		var contents := VBoxContainer.new()
 		card.add_child(contents)
 		var label := Label.new()
-		label.text = "%s  ·  seed %d  ·  Q %.0f" % [preset["name"], generator.last_seed, generator.last_quality_score]
+		label.text = "%s · seed %d · Q %.0f · A %s" % [preset["name"], generator.last_seed, generator.last_quality_score, str(roundi(float(generator.last_anatomy_metrics.get("score", 0.0)))) if not generator.last_anatomy_metrics.is_empty() else "-"]
 		contents.add_child(label)
 		var preview := TextureRect.new()
 		preview.texture = ImageTexture.create_from_image(generated)
