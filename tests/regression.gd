@@ -315,6 +315,45 @@ func run() -> void:
 	assert(generator.get_image().get_data() != detailed_pixels)
 	generator.internal_details_enabled = true
 	generator.anatomy_profile = null
+	# Morphotypes vary geometrically across seeds, without losing deterministic replay.
+	var base_map: Array[Variant] = []
+	for mx in 48:
+		var column: Array = []
+		for my in 48:
+			column.append(mx >= 12 and mx <= 35 and my >= 12 and my <= 35)
+		base_map.append(column)
+	var dimensions: Dictionary = {"body_width": 0.44, "body_height": 0.52, "head": 0.25, "appendage": 0.24}
+	var subtype_shapes: Dictionary = {}
+	for variant_seed in range(60, 66):
+		var shape: Dictionary = CreatureStructuralVariants.sample(CreatureMorphology.Archetype.SPIRIT, variant_seed, CreatureMood.Mood.NORMAL)
+		var mask: Array[Variant] = CreatureStructuralVariants.apply(base_map, CreatureMorphology.Archetype.SPIRIT, 0.95, dimensions, shape, variant_seed)
+		assert(mask == CreatureStructuralVariants.apply(base_map, CreatureMorphology.Archetype.SPIRIT, 0.95, dimensions, shape, variant_seed))
+		assert(float(CreatureQuality.measure(mask)["connected_ratio"]) > 0.70)
+		subtype_shapes[hash(mask)] = true
+	assert(subtype_shapes.size() >= 5)
+	for family in [CreatureMorphology.Archetype.BIPED, CreatureMorphology.Archetype.SLIME, CreatureMorphology.Archetype.WINGED, CreatureMorphology.Archetype.INSECTOID, CreatureMorphology.Archetype.QUADRUPED, CreatureMorphology.Archetype.GOLEM]:
+		var family_variants: Dictionary = {}
+		for variant_seed in range(60, 64):
+			var shape: Dictionary = CreatureStructuralVariants.sample(family, variant_seed, CreatureMood.Mood.NORMAL)
+			family_variants[hash(CreatureStructuralVariants.apply(base_map, family, 0.9, dimensions, shape, variant_seed))] = true
+		assert(family_variants.size() > 1)
+	# Classic silhouette is available by disabling the structural variant pass.
+	generator.creature_archetype = CreatureMorphology.Archetype.SPIRIT
+	generator.anatomy_profile = CreatureAnatomyProfile.new()
+	generator.structural_variants = true
+	generator.manual_seed = 1042
+	generator.quality_enabled = false
+	generator.draw_sprite()
+	var seeded_structure: Dictionary = generator.last_structure.duplicate(true)
+	var seeded_image: PackedByteArray = generator.get_image().get_data()
+	generator.draw_sprite()
+	assert(generator.last_structure == seeded_structure)
+	assert(generator.get_image().get_data() == seeded_image)
+	generator.structural_variants = false
+	generator.draw_sprite()
+	assert(generator.last_structure.is_empty())
+	generator.anatomy_profile = null
+	generator.structural_variants = true
 	# Isolated batch generation does not mutate or delete the live preview.
 	var authoring := CreatureGenerationPreset.new()
 	authoring.quality_max_attempts = 2

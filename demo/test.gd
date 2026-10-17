@@ -25,6 +25,7 @@ var quality_slider: HSlider
 var shade_slider: HSlider
 var detail_slider: HSlider
 var details_checkbox: CheckBox
+var structure_checkbox: CheckBox
 var view_selector: OptionButton
 var active_style: int = 0
 var anatomy_profile: CreatureAnatomyProfile
@@ -141,6 +142,10 @@ func _ready() -> void:
 	details_checkbox.text = "Internal details"
 	details_checkbox.button_pressed = true
 	art_controls.add_child(details_checkbox)
+	structure_checkbox = CheckBox.new()
+	structure_checkbox.text = "Structural variants"
+	structure_checkbox.button_pressed = true
+	art_controls.add_child(structure_checkbox)
 	detail_slider = HSlider.new()
 	detail_slider.min_value = 0.0
 	detail_slider.max_value = 1.0
@@ -157,6 +162,7 @@ func _ready() -> void:
 	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	shade_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	details_checkbox.toggled.connect(func(_v: bool) -> void: _regenerate())
+	structure_checkbox.toggled.connect(func(_v: bool) -> void: _regenerate())
 	detail_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	family_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	preset_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
@@ -280,6 +286,7 @@ func _build_preset(index: int) -> CreatureGenerationPreset:
 		preset.quality_min_score = quality_slider.value
 		preset.quality_max_attempts = 8
 		preset.refined_anatomy = true
+	preset.structural_variants = structure_checkbox.button_pressed
 	preset.internal_details_enabled = details_checkbox.button_pressed
 	preset.internal_detail_strength = detail_slider.value
 	if family_selector.selected > 0:
@@ -329,6 +336,7 @@ func _render_gallery() -> void:
 			var old_preset: CreatureGenerationPreset = _build_preset(index)
 			if CreatureAnatomyRefiner.supports(old_preset.creature_archetype):
 				old_preset.refined_anatomy = false
+				old_preset.structural_variants = false
 				old_preset.internal_details_enabled = false
 				old_preset.quality_enabled = false
 				var old_items: Array[Dictionary] = CreatureBatchGenerator.generate(old_preset, self, 1, int(item["selected_seed"]))
@@ -344,6 +352,9 @@ func _render_gallery() -> void:
 					caption.text = "Above: refined  /  Below: legacy (same seed)"
 					contents.add_child(caption)
 		var metric := Label.new()
+		var structure: Dictionary = item.get("structure", {})
+		if not structure.is_empty():
+			title.text += " · " + str(structure.get("name", ""))
 		var traits: Dictionary = item.get("traits", {})
 		metric.text = "Anatomy %.0f · %s · %.1f ms%s" % [float(item["anatomy_metrics"].get("score", 0.0)), ("Pattern %d / Accent %d" % [int(traits.get("pattern", 0)) + 1, int(traits.get("accent", 0)) + 1]) if not traits.is_empty() else "No details", float(item.get("elapsed_ms", 0.0)), "" if bool(item["quality_accepted"]) else " · best effort"]
 		contents.add_child(metric)

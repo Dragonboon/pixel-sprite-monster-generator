@@ -258,3 +258,7 @@ var imagen: Image = monstruo.get_image()
 ```
 
 **Compatibilidad:** el PNG de las cuatro familias refinadas cambia al incluir los detalles por defecto. Desactiva esta opción para repetir las exportaciones anteriores. El renderizador animado original sigue sin incorporar esta capa: para mostrarla dentro del juego utiliza la imagen obtenida con `get_image()` como textura con filtrado nearest-neighbor.
+
+## Variedad estructural entre criaturas
+
+`structural_variants` activa subtipos de silueta derivados de la semilla. Spirit pasa a tener seis formas: Wisp, Jelly, Wraith, Mask, Flame y Crowned, con masas, cabezas y estelas claramente diferenciadas. Insectoid, Quadruped, Golem, Biped, Slime y Winged reciben cuatro variantes estructurales cada uno. El mood modifica proporciones y longitudes. `last_structure`, los resultados de lotes y el manifiesto JSON registran el subtipo y sus parámetros. Desactiva `structural_variants` para recuperar las reglas anteriores. También se separa el salto de semillas de los reintentos del salto usado por la galería, evitando que tarjetas vecinas terminen accidentalmente en la misma semilla seleccionada. **Los resultados con selección de calidad pueden cambiar respecto a versiones anteriores**.

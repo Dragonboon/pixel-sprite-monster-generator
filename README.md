@@ -262,3 +262,7 @@ var image: Image = monster.get_image()
 ```
 
 **Compatibility:** For these four refined archetypes, default PNG pixels now include the new markings. To reproduce earlier PNG exports, disable internal details. In-game node animation is still rendered by the original live group drawer; internal markings apply to `get_image()` and PNG exports, so display the generated image as a nearest-filtered texture when using the finish.
+
+## Structural diversity across creature families
+
+`structural_variants` activates deterministic shape variants selected from the chosen seed. Spirit now has six genuine silhouettes: Wisp, Jelly, Wraith, Mask, Flame and Crowned, with different bodies, head forms, trailing appendages and seeded proportions. Insectoid, Quadruped and Golem receive four different morphological ornaments/body plans; Biped, Slime and Winged gain four silhouette variants each. Existing creature families and visual finishes remain supported. Mood affects proportions and trail lengths. `last_structure` and batch `structure` record the selected variant and its sampled parameters; manifests include those fields. Turn off structural variants to recover the previous anatomy path. The selection quality reroll stride is now different from the gallery's per-creature seed stride, preventing the deterministic overlap previously observed between adjacent cards. **Old quality-filtered seed results may change**; preserve presets/version for exact reproduction.

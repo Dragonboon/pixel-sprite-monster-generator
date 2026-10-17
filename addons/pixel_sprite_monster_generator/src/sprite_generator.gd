@@ -24,6 +24,9 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 @export var anatomy_profile: CreatureAnatomyProfile
 ## Keep legacy generation available for fair same-seed visual comparisons.
 @export var refined_anatomy: bool = true
+## Enables seed-dependent body plans on refined families and extra appendages elsewhere.
+@export var structural_variants: bool = true
+var last_structure: Dictionary = {}
 @export_category("Internal Details")
 ## Applies to the four anatomy-refined families only. Turn off for legacy PNGs.
 @export var internal_details_enabled: bool = true
@@ -146,6 +149,7 @@ func draw_sprite() -> void:
 	last_anatomy = {}
 	last_anatomy_metrics = {}
 	last_traits = {}
+	last_structure = {}
 	last_quality_attempts = 0
 	# Candidate masks are evaluated without touching the game's global RNG.
 	var first_seed: int = last_seed
@@ -158,8 +162,9 @@ func draw_sprite() -> void:
 	last_anatomy_metrics = {}
 	var best_anatomy: Dictionary = {}
 	var best_anatomy_metrics: Dictionary = {}
+	var best_structure: Dictionary = {}
 	for attempt in attempts:
-		var candidate_seed: int = first_seed + attempt * 7919
+		var candidate_seed: int = first_seed + attempt * 1000003
 		rng.seed = candidate_seed
 		map_generator = MapGenerator.new(rng)
 		cellular_automata = CellularAutomata.new(clampi(steps, 0, 20), clampi(birth_limit, 0, 8), clampi(death_limit, 0, 8))
@@ -188,6 +193,13 @@ func draw_sprite() -> void:
 					candidate = CreatureAnatomyRefiner.refine(candidate, creature_archetype, anatomy_strength, defaults, candidate_seed)
 				else:
 					candidate = CreatureMorphology.apply(candidate, creature_archetype, anatomy_strength, candidate_seed, facial_eyes)
+		var candidate_structure: Dictionary = {}
+		if structural_variants and creature_archetype != CreatureMorphology.Archetype.ORIGINAL and anatomy_strength > 0.0:
+			candidate_structure = CreatureStructuralVariants.sample(creature_archetype, candidate_seed, silhouette_mood)
+			var shape_values: Dictionary = last_anatomy
+			if shape_values.is_empty():
+				shape_values = {"body_width": 0.44, "body_height": 0.52, "head": 0.25, "appendage": 0.24}
+			candidate = CreatureStructuralVariants.apply(candidate, creature_archetype, anatomy_strength, shape_values, candidate_structure, candidate_seed)
 		if silhouette_mood != CreatureMood.Mood.NORMAL:
 			candidate = CreatureMood.apply(candidate, silhouette_mood, candidate_seed)
 		var measurement: Dictionary = CreatureQuality.measure(candidate)
@@ -204,6 +216,7 @@ func draw_sprite() -> void:
 			best_state = rng.state
 			best_anatomy = last_anatomy.duplicate(true)
 			best_anatomy_metrics = anatomy_measurement.duplicate(true)
+			best_structure = candidate_structure.duplicate(true)
 		if not quality_enabled or score >= quality_min_score:
 			quality_accepted = true
 			break
@@ -211,6 +224,7 @@ func draw_sprite() -> void:
 	last_quality_score = best_score
 	last_anatomy = best_anatomy
 	last_anatomy_metrics = best_anatomy_metrics
+	last_structure = best_structure
 	if internal_details_enabled and refined_anatomy and CreatureAnatomyRefiner.supports(creature_archetype) and internal_detail_strength > 0.0:
 		last_traits = CreatureTraitProfile.derive(creature_archetype, best_seed, silhouette_mood)
 	rng.seed = best_seed

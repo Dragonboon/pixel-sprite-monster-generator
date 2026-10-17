@@ -86,6 +86,7 @@ static func _append_range(items: Array[Dictionary], worker: PixelSpriteMonsterGe
 			"anatomy": worker.last_anatomy.duplicate(true),
 			"anatomy_metrics": worker.last_anatomy_metrics.duplicate(true),
 			"traits": worker.last_traits.duplicate(true),
+			"structure": worker.last_structure.duplicate(true),
 			"image": image
 		})
 
@@ -148,7 +149,8 @@ static func export_pngs(items: Array[Dictionary], directory: String, prefix: Str
 			"elapsed_ms": item.get("elapsed_ms", 0.0),
 			"anatomy": item["anatomy"],
 			"anatomy_metrics": item["anatomy_metrics"],
-			"traits": item.get("traits", {})
+			"traits": item.get("traits", {}),
+			"structure": item.get("structure", {})
 		})
 	var manifest: Dictionary = {
 		"schema_version": 1,
