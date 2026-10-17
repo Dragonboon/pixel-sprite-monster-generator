@@ -437,6 +437,44 @@ func run() -> void:
 	assert(native_image.get_data() == native_bytes)
 	assert(generator.last_seed == stored_seed)
 	generator.anatomy_profile = null
+	# Anatomical repair removes small detached dirt while connecting nearby
+	# substantial components. Explicit uncanny holes are preserved.
+	var broken: Array[Variant] = []
+	for xx in 32:
+		var col: Array[bool] = []
+		col.resize(32)
+		col.fill(false)
+		broken.append(col)
+	for xx in range(12, 20):
+		for yy in range(9, 23):
+			broken[xx][yy] = true
+	broken[20][15] = true
+	broken[21][15] = true
+	broken[22][15] = true
+	broken[3][3] = true
+	broken[16][12] = false
+	var repaired: Array[Variant] = CreatureSilhouetteIntegrity.repair(broken, true)
+	assert(repaired[20][15] and repaired[22][15] and not repaired[3][3])
+	assert(not repaired[16][12])
+	assert(repaired == CreatureSilhouetteIntegrity.repair(broken, true))
+	var repaired_quality: Dictionary = CreatureQuality.measure(repaired)
+	assert(int(repaired_quality["components"]) == 1)
+	var integrity_info: Dictionary = CreatureSilhouetteIntegrity.inspect(repaired, CreatureMorphology.Archetype.BIPED, repaired_quality, true)
+	assert(bool(integrity_info["valid"]))
+	generator.anatomy_integrity_enabled = true
+	generator.creature_archetype = CreatureMorphology.Archetype.GOLEM
+	generator.manual_seed = 4200
+	generator.quality_enabled = true
+	generator.quality_max_attempts = 4
+	generator.draw_sprite()
+	var integrity_pixels: PackedByteArray = generator.get_image().get_data()
+	var integrity_seed: int = generator.last_seed
+	assert(not generator.last_integrity.is_empty())
+	generator.draw_sprite()
+	assert(generator.last_seed == integrity_seed)
+	assert(generator.get_image().get_data() == integrity_pixels)
+	generator.anatomy_integrity_enabled = false
+	generator.quality_enabled = false
 	# Isolated batch generation does not mutate or delete the live preview.
 	var authoring := CreatureGenerationPreset.new()
 	authoring.quality_max_attempts = 2

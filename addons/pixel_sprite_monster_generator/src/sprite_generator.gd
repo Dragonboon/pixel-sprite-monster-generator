@@ -14,6 +14,9 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 @export_range(0.0, 1.0, 0.05) var organic_shape_strength: float = 0.0
 ## Optional removal of detached filled islands after cellular smoothing.
 @export var keep_largest_body: bool = false
+## Opt-in integrity repair and stricter family-aware quality selection.
+@export var anatomy_integrity_enabled: bool = false
+var last_integrity: Dictionary = {}
 @export_category("Creature Anatomy")
 ## ORIGINAL keeps the previously generated silhouette unchanged.
 @export var creature_archetype: CreatureMorphology.Archetype = CreatureMorphology.Archetype.ORIGINAL
@@ -163,6 +166,7 @@ func draw_sprite() -> void:
 	last_anatomy_metrics = {}
 	last_traits = {}
 	last_structure = {}
+	last_integrity = {}
 	last_palette = PackedColorArray()
 	last_palette_roles = {}
 	last_quality_attempts = 0
@@ -172,12 +176,14 @@ func draw_sprite() -> void:
 	var best_state: int = 0
 	var best_score: float = -1.0
 	var best_mask: Array[Variant] = []
-	var attempts: int = clampi(quality_max_attempts, 1, 32) if quality_enabled else 1
+	var attempts: int = clampi(quality_max_attempts, 1, 32) if quality_enabled or anatomy_integrity_enabled else 1
 	quality_accepted = false
 	last_anatomy_metrics = {}
 	var best_anatomy: Dictionary = {}
 	var best_anatomy_metrics: Dictionary = {}
 	var best_structure: Dictionary = {}
+	var best_integrity: Dictionary = {}
+	var best_valid: bool = false
 	for attempt in attempts:
 		var candidate_seed: int = first_seed + attempt * 1000003
 		rng.seed = candidate_seed
@@ -221,14 +227,27 @@ func draw_sprite() -> void:
 			candidate = CreatureHorrorProfile.apply(candidate, creature_archetype, candidate_structure)
 		elif silhouette_mood != CreatureMood.Mood.NORMAL:
 			candidate = CreatureMood.apply(candidate, silhouette_mood, candidate_seed)
+		var candidate_uncanny: bool = uncanny_enabled
+		if anatomy_integrity_enabled:
+			candidate = CreatureSilhouetteIntegrity.repair(candidate, candidate_uncanny)
 		var measurement: Dictionary = CreatureQuality.measure(candidate)
+		var integrity: Dictionary = {}
+		if anatomy_integrity_enabled:
+			integrity = CreatureSilhouetteIntegrity.inspect(candidate, creature_archetype, measurement, candidate_uncanny)
 		var score: float = float(measurement["score"])
 		var anatomy_measurement: Dictionary = {}
 		if anatomy_profile != null and creature_archetype != CreatureMorphology.Archetype.ORIGINAL:
 			anatomy_measurement = CreatureAnatomyMetrics.evaluate(candidate, creature_archetype, last_anatomy)
 			score = score * 0.65 + float(anatomy_measurement["score"]) * 0.35
+		if anatomy_integrity_enabled:
+			score = score * 0.60 + float(integrity["score"]) * 0.40
+			if not bool(integrity["valid"]):
+				score = minf(score, 54.0)
 		last_quality_attempts = attempt + 1
-		if score > best_score:
+		# A structurally valid candidate wins over a defective one even if
+		# the latter has a superficially higher occupancy score.
+		var structurally_valid: bool = not anatomy_integrity_enabled or bool(integrity["valid"])
+		if (structurally_valid and not best_valid) or (structurally_valid == best_valid and score > best_score):
 			best_score = score
 			best_seed = candidate_seed
 			best_mask = candidate
@@ -236,7 +255,9 @@ func draw_sprite() -> void:
 			best_anatomy = last_anatomy.duplicate(true)
 			best_anatomy_metrics = anatomy_measurement.duplicate(true)
 			best_structure = candidate_structure.duplicate(true)
-		if not quality_enabled or score >= quality_min_score:
+			best_integrity = integrity.duplicate(true)
+			best_valid = structurally_valid
+		if (not quality_enabled or score >= quality_min_score) and structurally_valid:
 			quality_accepted = true
 			break
 	last_seed = best_seed
@@ -244,6 +265,7 @@ func draw_sprite() -> void:
 	last_anatomy = best_anatomy
 	last_anatomy_metrics = best_anatomy_metrics
 	last_structure = best_structure
+	last_integrity = best_integrity
 	if internal_details_enabled and refined_anatomy and CreatureAnatomyRefiner.supports(creature_archetype) and internal_detail_strength > 0.0:
 		last_traits = CreatureTraitProfile.derive(creature_archetype, best_seed, silhouette_mood)
 	rng.seed = best_seed

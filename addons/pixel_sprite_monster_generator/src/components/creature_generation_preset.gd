@@ -9,6 +9,7 @@ extends Resource
 @export_range(0.0, 100.0, 1.0) var symmetry: float = 100.0
 @export_range(0.0, 1.0, 0.05) var organic_shape_strength: float = 0.25
 @export var keep_largest_body: bool = true
+@export var anatomy_integrity_enabled: bool = true
 @export var outlined: bool = true
 @export_range(0, 20, 1) var steps: int = 4
 @export_range(0, 8, 1) var birth_limit: int = 5
@@ -60,6 +61,7 @@ func apply_to(generator: PixelSpriteMonsterGenerator) -> void:
 	generator.symmetry = symmetry
 	generator.organic_shape_strength = organic_shape_strength
 	generator.keep_largest_body = keep_largest_body
+	generator.anatomy_integrity_enabled = anatomy_integrity_enabled
 	generator.outlined = outlined
 	generator.steps = steps
 	generator.birth_limit = birth_limit
