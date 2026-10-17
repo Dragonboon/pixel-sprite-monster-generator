@@ -58,6 +58,20 @@ func run() -> void:
 	assert(generator.get_image().get_size() == Vector2i(35, 27))
 	for cell in generator.cell_group_drawer.cells():
 		assert(cell.draw_size == 1.0)
+	# Palette dispatch must be pixel-identical to the legacy calls and draw order.
+	var palette_seed: int = 20261017
+	var dispatch_rng := RandomNumberGenerator.new()
+	dispatch_rng.seed = palette_seed
+	var dispatch := ColorSchemeGenerator.new(dispatch_rng)
+	var direct_rng := RandomNumberGenerator.new()
+	direct_rng.seed = palette_seed
+	var direct := ColorSchemeGenerator.new(direct_rng)
+	assert(dispatch.generate_palette(ColorSchemeGenerator.ColorGenerationMethod.GoldenRatioHSV, 8, 0.45, 0.88) == direct.generate_random_hsv_colors(8, 0.45, 0.88))
+	assert(dispatch.generate_palette(ColorSchemeGenerator.ColorGenerationMethod.RandomRGB, 8, 0.45, 0.88) == direct.generate_random_rgb_colors(8))
+	assert(dispatch_rng.state == direct_rng.state)
+	# The consolidated finish remains equivalent for cached images.
+	var unstyled: Image = generator.get_unfinished_image()
+	assert(generator.get_image().get_data() == generator.finish_image(unstyled).get_data())
 	# A non-square odd-width map must still be symmetric at 100 percent.
 	var map: Array = generator.map_generator.generate_new(Vector2(33, 25), 100.0)
 	for x in 33:
