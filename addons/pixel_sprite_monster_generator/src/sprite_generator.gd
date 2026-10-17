@@ -22,6 +22,8 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 ## Optionally cut a pair of enclosed eye pockets where the body is solid.
 @export var facial_eyes: bool = false
 @export var anatomy_profile: CreatureAnatomyProfile
+## Keep legacy generation available for fair same-seed visual comparisons.
+@export var refined_anatomy: bool = true
 var last_anatomy: Dictionary = {}
 @export_category("Art Direction")
 @export var silhouette_mood: CreatureMood.Mood = CreatureMood.Mood.NORMAL
@@ -163,10 +165,22 @@ func draw_sprite() -> void:
 				var anatomy_rng := RandomNumberGenerator.new()
 				anatomy_rng.seed = candidate_seed ^ 33001
 				last_anatomy = anatomy_profile.sample(anatomy_rng, silhouette_mood)
-				candidate = CreatureMorphology.apply_profile(candidate, creature_archetype, anatomy_strength, last_anatomy)
+				if refined_anatomy and CreatureAnatomyRefiner.supports(creature_archetype):
+					candidate = CreatureAnatomyRefiner.refine(candidate, creature_archetype, anatomy_strength, last_anatomy, candidate_seed)
+				else:
+					candidate = CreatureMorphology.apply_profile(candidate, creature_archetype, anatomy_strength, last_anatomy)
 			else:
 				last_anatomy = {}
-				candidate = CreatureMorphology.apply(candidate, creature_archetype, anatomy_strength, candidate_seed, facial_eyes)
+				if refined_anatomy and CreatureAnatomyRefiner.supports(creature_archetype):
+					var defaults: Dictionary = {
+						"body_width": 0.42 + 0.01 * float(posmod(candidate_seed, 8)),
+						"body_height": 0.50 + 0.01 * float(posmod(candidate_seed, 7)),
+						"head": 0.22 + 0.01 * float(posmod(candidate_seed, 6)),
+						"appendage": 0.22 + 0.01 * float(posmod(candidate_seed, 9))
+					}
+					candidate = CreatureAnatomyRefiner.refine(candidate, creature_archetype, anatomy_strength, defaults, candidate_seed)
+				else:
+					candidate = CreatureMorphology.apply(candidate, creature_archetype, anatomy_strength, candidate_seed, facial_eyes)
 		if silhouette_mood != CreatureMood.Mood.NORMAL:
 			candidate = CreatureMood.apply(candidate, silhouette_mood, candidate_seed)
 		var measurement: Dictionary = CreatureQuality.measure(candidate)

@@ -236,6 +236,38 @@ func run() -> void:
 	var broken_quality: Dictionary = CreatureQuality.measure(fragmented)
 	assert(solid_quality["score"] > broken_quality["score"])
 	assert(broken_quality.has("components") and broken_quality.has("occupancy"))
+	# Same-seed morphology review, without renderer or Godot Actions.
+	var anatomy_source_rng := RandomNumberGenerator.new()
+	var review_signatures: Dictionary = {}
+	var anatomy_ratios: Dictionary = {"body_width": 0.44, "body_height": 0.54, "head": 0.25, "appendage": 0.26}
+	for family in [CreatureMorphology.Archetype.INSECTOID, CreatureMorphology.Archetype.QUADRUPED, CreatureMorphology.Archetype.GOLEM, CreatureMorphology.Archetype.SPIRIT]:
+		for reviewed_seed in [42, 1042, 4200]:
+			anatomy_source_rng.seed = reviewed_seed
+			var input_mask: Array[Variant] = MapGenerator.new(anatomy_source_rng).generate_new(Vector2(48, 48), 100.0)
+			var refined: Array[Variant] = CreatureAnatomyRefiner.refine(input_mask, family, 0.95, anatomy_ratios, reviewed_seed)
+			assert(refined == CreatureAnatomyRefiner.refine(input_mask, family, 0.95, anatomy_ratios, reviewed_seed))
+			var shaped: Dictionary = CreatureQuality.measure(refined)
+			assert(shaped["width"] >= 12 and shaped["height"] >= 16)
+			assert(float(shaped["connected_ratio"]) >= 0.85)
+			review_signatures[hash(refined)] = true
+	assert(review_signatures.size() >= 8, "Archetypes should remain meaningfully distinct")
+	assert(not CreatureAnatomyRefiner.supports(CreatureMorphology.Archetype.ORIGINAL))
+	# Refined and legacy modes must replay individually with the same seed.
+	generator.creature_archetype = CreatureMorphology.Archetype.GOLEM
+	generator.anatomy_profile = CreatureAnatomyProfile.new()
+	generator.manual_seed = 1042
+	generator.quality_enabled = false
+	generator.refined_anatomy = true
+	generator.draw_sprite()
+	var refined_pixels: PackedByteArray = generator.get_image().get_data()
+	generator.draw_sprite()
+	assert(refined_pixels == generator.get_image().get_data())
+	generator.refined_anatomy = false
+	generator.draw_sprite()
+	var legacy_pixels: PackedByteArray = generator.get_image().get_data()
+	assert(refined_pixels != legacy_pixels)
+	generator.refined_anatomy = true
+	generator.anatomy_profile = null
 	# Isolated batch generation does not mutate or delete the live preview.
 	var authoring := CreatureGenerationPreset.new()
 	authoring.quality_max_attempts = 2

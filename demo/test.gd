@@ -7,7 +7,11 @@ const PRESETS: Array[Dictionary] = [
 	{"name": "Insectoid", "shape": 0.2, "anatomy": CreatureMorphology.Archetype.INSECTOID, "symmetry": 100.0, "steps": 3, "colors": 7, "size": Vector2(48, 48)},
 	{"name": "Soft slime", "shape": 0.6, "anatomy": CreatureMorphology.Archetype.SLIME, "symmetry": 100.0, "steps": 3, "colors": 8, "size": Vector2(48, 48)},
 	{"name": "Winged creature", "shape": 0.4, "anatomy": CreatureMorphology.Archetype.WINGED, "symmetry": 100.0, "steps": 4, "colors": 10, "size": Vector2(48, 48)},
-	{"name": "Wild biped", "shape": 0.15, "anatomy": CreatureMorphology.Archetype.BIPED, "symmetry": 83.0, "steps": 5, "colors": 6, "size": Vector2(48, 48)}
+	{"name": "Wild biped", "shape": 0.15, "anatomy": CreatureMorphology.Archetype.BIPED, "symmetry": 83.0, "steps": 5, "colors": 6, "size": Vector2(48, 48)},
+	{"name": "Mantid", "shape": 0.2, "anatomy": CreatureMorphology.Archetype.INSECTOID, "symmetry": 93.0, "steps": 4, "colors": 7, "size": Vector2(48, 48)},
+	{"name": "Forest beast", "shape": 0.2, "anatomy": CreatureMorphology.Archetype.QUADRUPED, "symmetry": 88.0, "steps": 4, "colors": 8, "size": Vector2(48, 48)},
+	{"name": "Stone guardian", "shape": 0.1, "anatomy": CreatureMorphology.Archetype.GOLEM, "symmetry": 100.0, "steps": 5, "colors": 6, "size": Vector2(48, 48)},
+	{"name": "Wandering spirit", "shape": 0.45, "anatomy": CreatureMorphology.Archetype.SPIRIT, "symmetry": 80.0, "steps": 3, "colors": 10, "size": Vector2(48, 48)}
 ]
 var generator: PixelSpriteMonsterGenerator
 var gallery: GridContainer
@@ -109,7 +113,7 @@ func _ready() -> void:
 	anatomy_enabled.button_pressed = true
 	art_controls.add_child(anatomy_enabled)
 	compare_views = CheckBox.new()
-	compare_views.text = "Compare with Front"
+	compare_views.text = "Compare legacy anatomy"
 	compare_views.button_pressed = false
 	art_controls.add_child(compare_views)
 	var quality_label := Label.new()
@@ -135,7 +139,7 @@ func _ready() -> void:
 	style_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	view_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	anatomy_enabled.toggled.connect(func(_v: bool) -> void: _regenerate())
-	compare_views.toggled.connect(func(_v: bool) -> void: _regenerate())
+	compare_views.toggled.connect(func(_v: bool) -> void: _render_gallery())
 	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	shade_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	family_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
@@ -259,6 +263,7 @@ func _build_preset(index: int) -> CreatureGenerationPreset:
 		preset.dithering_strength = 0.18
 		preset.quality_min_score = quality_slider.value
 		preset.quality_max_attempts = 8
+		preset.refined_anatomy = true
 	if family_selector.selected > 0:
 		preset.creature_archetype = family_selector.selected - 1
 	return preset
@@ -302,6 +307,23 @@ func _render_gallery() -> void:
 		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		preview.custom_minimum_size = Vector2(250, 160)
 		contents.add_child(preview)
+		if compare_views.button_pressed and index < 12:
+			var old_preset: CreatureGenerationPreset = _build_preset(index)
+			if CreatureAnatomyRefiner.supports(old_preset.creature_archetype):
+				old_preset.refined_anatomy = false
+				old_preset.quality_enabled = false
+				var old_items: Array[Dictionary] = CreatureBatchGenerator.generate(old_preset, self, 1, int(item["selected_seed"]))
+				if not old_items.is_empty():
+					var legacy: TextureRect = TextureRect.new()
+					legacy.texture = ImageTexture.create_from_image(old_items[0]["image"])
+					legacy.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+					legacy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+					legacy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+					legacy.custom_minimum_size = Vector2(160, 105)
+					contents.add_child(legacy)
+					var caption := Label.new()
+					caption.text = "Above: refined  /  Below: legacy (same seed)"
+					contents.add_child(caption)
 		var metric := Label.new()
 		metric.text = "Anatomy %.0f · %.1f ms%s" % [float(item["anatomy_metrics"].get("score", 0.0)), float(item.get("elapsed_ms", 0.0)), "" if bool(item["quality_accepted"]) else " · best effort"]
 		contents.add_child(metric)
