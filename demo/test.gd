@@ -460,6 +460,15 @@ func _render_gallery() -> void:
 		var traits: Dictionary = item.get("traits", {})
 		metric.text = "Anatomy %.0f · %s · %.1f ms%s" % [float(item["anatomy_metrics"].get("score", 0.0)), ("Pattern %d / Accent %d" % [int(traits.get("pattern", 0)) + 1, int(traits.get("accent", 0)) + 1]) if not traits.is_empty() else "No details", float(item.get("elapsed_ms", 0.0)), "" if bool(item["quality_accepted"]) else " · best effort"]
 		contents.add_child(metric)
+		var chosen_palette: PackedColorArray = item.get("palette", PackedColorArray())
+		if not chosen_palette.is_empty():
+			var swatches := HBoxContainer.new()
+			for selected_color in chosen_palette:
+				var chip := ColorRect.new()
+				chip.color = selected_color
+				chip.custom_minimum_size = Vector2(10, 10)
+				swatches.add_child(chip)
+			contents.add_child(swatches)
 		gallery.add_child(card)
 
 

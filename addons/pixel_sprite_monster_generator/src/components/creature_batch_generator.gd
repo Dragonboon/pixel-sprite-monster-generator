@@ -148,6 +148,10 @@ static func export_pngs(items: Array[Dictionary], directory: String, prefix: Str
 		var image_error: Error = image.save_png(directory.path_join(image_name))
 		if image_error != OK:
 			return image_error
+		var palette_hex: Array[String] = []
+		var source_palette: PackedColorArray = item.get("palette", PackedColorArray())
+		for palette_color in source_palette:
+			palette_hex.append(palette_color.to_html(false))
 		records.append({
 			"file": image_name,
 			"requested_seed": item["requested_seed"],
@@ -160,7 +164,7 @@ static func export_pngs(items: Array[Dictionary], directory: String, prefix: Str
 			"anatomy_metrics": item["anatomy_metrics"],
 			"traits": item.get("traits", {}),
 			"structure": item.get("structure", {}),
-			"palette": Array(item.get("palette", PackedColorArray())).map(func(color: Color) -> String: return color.to_html(false)),
+			"palette": palette_hex,
 			"palette_roles": item.get("palette_roles", {}),
 			"harmony": item.get("harmony", 0),
 			"color_count_mode": item.get("color_count_mode", 0)
