@@ -17,7 +17,7 @@ Produce imágenes: no añade lógica de juego, colisiones ni animaciones diseña
 4. Añade un nodo `PixelSpriteMonsterGenerator` a tu escena y ejecútala.
 5. Ajusta tamaño, colores, simetría y suavizado; llama a `draw_sprite()` para regenerar.
 
-Abre `demo/test.tscn` o pulsa **F5** para explorar seis monstruos, tres tipos de silueta, nuevas semillas y exportación PNG por lotes.
+Abre `demo/test.tscn` o pulsa **F5** para explorar la galería de 1 a 128 criaturas, sus arquetipos, semillas y exportación PNG + JSON.
 La vista del monstruo se genera al ejecutar; no hay previsualización automática en el editor.
 
 ## Variaciones reproducibles
@@ -262,3 +262,22 @@ var imagen: Image = monstruo.get_image()
 ## Variedad estructural entre criaturas
 
 `structural_variants` activa subtipos de silueta derivados de la semilla. Spirit pasa a tener seis formas: Wisp, Jelly, Wraith, Mask, Flame y Crowned, con masas, cabezas y estelas claramente diferenciadas. Insectoid, Quadruped, Golem, Biped, Slime y Winged reciben cuatro variantes estructurales cada uno. El mood modifica proporciones y longitudes. `last_structure`, los resultados de lotes y el manifiesto JSON registran el subtipo y sus parámetros. Desactiva `structural_variants` para recuperar las reglas anteriores. También se separa el salto de semillas de los reintentos del salto usado por la galería, evitando que tarjetas vecinas terminen accidentalmente en la misma semilla seleccionada. **Los resultados con selección de calidad pueden cambiar respecto a versiones anteriores**.
+
+## Optimización del sombreado y de la galería
+
+La demo ahora separa **generación de anatomía** y **acabado visual**. Cambiar Shading, estilo, proyección o intensidad de detalles reutiliza los RGBA originales mediante `CreaturePreviewComposer.compose()`; ya no vuelve a calcular autómatas, filtro de calidad, anatomía ni paleta. La API expone `get_unfinished_image()` y `finish_image(image)` para aprovechar el mismo flujo en juegos externos. Los resultados fijos por preset y semilla no deberían cambiar por esta refactorización.
+
+La galería cede un fotograma después de cada criatura y muestra **12 tarjetas por página**, con selector para lotes grandes. Aunque así se limita el número de texturas visibles, las imágenes solicitadas siguen consumiendo memoria. La generación de cada criatura continúa siendo síncrona en CPU y una semilla costosa puede provocar esperas perceptibles. Es preferible esperar a que termine un lote grande antes de cambiar los parámetros, y después ajustar Shading sin regenerar las formas.
+
+```gdscript
+monstruo.draw_sprite()
+var base: Image = monstruo.get_unfinished_image()
+var final: Image = CreaturePreviewComposer.compose(
+    base, monstruo.creature_archetype, monstruo.last_traits,
+    monstruo.internal_details_enabled, monstruo.internal_detail_strength,
+    CreaturePixelEffects.Style.JRPG, CreaturePixelEffects.View.FRONT,
+    0.7, 0.15, 0.0, monstruo.last_seed
+)
+```
+
+Los resultados por lotes añaden `source_image` y `archetype` para permitir cambios de estilo sin repetir generación; `image` sigue siendo la imagen terminada. El caché ocupa memoria adicional por criatura: elimina `source_image` cuando no necesites recalcular el acabado. `export_pngs()` guarda solo la imagen final. El renderizador animado Node2D sigue sin reflejar estos filtros de imagen.

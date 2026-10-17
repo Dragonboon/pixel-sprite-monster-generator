@@ -17,7 +17,7 @@ Generation creates artwork, not gameplay logic, collision shapes or authored ani
 4. Add a `PixelSpriteMonsterGenerator` Node2D to a scene and run it.
 5. Adjust the size, palette, symmetry and cellular automata settings, then call `draw_sprite()` to regenerate.
 
-Open `demo/test.tscn`, or press **F5**, for an interactive six-monster gallery with three silhouette archetypes, reseeding and PNG batch export.
+Open `demo/test.tscn`, or press **F5**, for the interactive 1–128 creature laboratory, with multiple archetypes, seed control and PNG + JSON export.
 Monster preview is runtime-only; the editor does not generate a preview automatically.
 
 ## Reproducible variations
@@ -266,3 +266,22 @@ var image: Image = monster.get_image()
 ## Structural diversity across creature families
 
 `structural_variants` activates deterministic shape variants selected from the chosen seed. Spirit now has six genuine silhouettes: Wisp, Jelly, Wraith, Mask, Flame and Crowned, with different bodies, head forms, trailing appendages and seeded proportions. Insectoid, Quadruped and Golem receive four different morphological ornaments/body plans; Biped, Slime and Winged gain four silhouette variants each. Existing creature families and visual finishes remain supported. Mood affects proportions and trail lengths. `last_structure` and batch `structure` record the selected variant and its sampled parameters; manifests include those fields. Turn off structural variants to recover the previous anatomy path. The selection quality reroll stride is now different from the gallery's per-creature seed stride, preventing the deterministic overlap previously observed between adjacent cards. **Old quality-filtered seed results may change**; preserve presets/version for exact reproduction.
+
+## Preview performance and shading controls
+
+The laboratory separates **generation** from **visual finishing**. Changing Shading, style, projection or internal-detail intensity now recomposites already generated RGBA images through `CreaturePreviewComposer.compose()`, instead of rerunning cellular automata, quality search, anatomy or palette generation. The generator exposes `get_unfinished_image()` and `finish_image(image)` for projects that wish to reuse that two-stage pipeline. Fixed preset/seed rendering is unchanged by this refactoring.
+
+Gallery generations yield the next frame after each sprite; the gallery only instantiates **12 preview cards per page**, with a page selector for larger encounters. This bounds the number of TextureRects rendered at once, although all requested images still occupy memory. When selecting high quality and 128 monsters, a *single* candidate can still take perceptible time: this remains synchronous CPU computation and isn't a worker-thread solution. Avoid dragging Shading while a large batch is in progress; wait for completion, then change appearance without rerolling.
+
+```gdscript
+monster.draw_sprite()
+var raw: Image = monster.get_unfinished_image()
+var result: Image = CreaturePreviewComposer.compose(
+    raw, monster.creature_archetype, monster.last_traits,
+    monster.internal_details_enabled, monster.internal_detail_strength,
+    CreaturePixelEffects.Style.JRPG, CreaturePixelEffects.View.FRONT,
+    0.7, 0.15, 0.0, monster.last_seed
+)
+```
+
+The batch API now returns an extra `source_image` and `archetype` for restyling; `image` is still the final version. `source_image` increases retained memory per creature, trading memory for fast preview changes. `export_pngs()` exports `image` only, not these cached intermediates. For runtime encounter memory efficiency, release `source_image` if restyling is unnecessary. The animated Node2D cell renderer does not show image-only finishing.

@@ -354,6 +354,41 @@ func run() -> void:
 	assert(generator.last_structure.is_empty())
 	generator.anatomy_profile = null
 	generator.structural_variants = true
+	# The cached finishing stage must preserve the original output and seeds.
+	generator.creature_archetype = CreatureMorphology.Archetype.SPIRIT
+	generator.anatomy_profile = CreatureAnatomyProfile.new()
+	generator.refined_anatomy = true
+	generator.structural_variants = true
+	generator.internal_details_enabled = true
+	generator.internal_detail_strength = 0.8
+	generator.visual_style = CreaturePixelEffects.Style.ARCADE
+	generator.view_mode = CreaturePixelEffects.View.FRONT
+	generator.shading_strength = 0.65
+	generator.dithering_strength = 0.25
+	generator.glitch_strength = 0.0
+	generator.randomize_seed = false
+	generator.manual_seed = 4200
+	generator.quality_enabled = false
+	generator.draw_sprite()
+	var native_image: Image = generator.get_unfinished_image()
+	var composed: Image = generator.finish_image(native_image)
+	assert(native_image != null and native_image.get_size() == generator.get_image().get_size())
+	assert(composed.get_data() == generator.get_image().get_data())
+	var native_bytes: PackedByteArray = native_image.get_data()
+	var stored_seed: int = generator.last_seed
+	var style_only: Image = CreaturePreviewComposer.compose(
+		native_image, generator.creature_archetype, generator.last_traits,
+		true, 0.8, CreaturePixelEffects.Style.ARCADE,
+		CreaturePixelEffects.View.FRONT, 0.2, 0.25, 0.0, stored_seed
+	)
+	assert(style_only.get_data() == CreaturePreviewComposer.compose(
+		native_image, generator.creature_archetype, generator.last_traits,
+		true, 0.8, CreaturePixelEffects.Style.ARCADE,
+		CreaturePixelEffects.View.FRONT, 0.2, 0.25, 0.0, stored_seed
+	).get_data())
+	assert(native_image.get_data() == native_bytes)
+	assert(generator.last_seed == stored_seed)
+	generator.anatomy_profile = null
 	# Isolated batch generation does not mutate or delete the live preview.
 	var authoring := CreatureGenerationPreset.new()
 	authoring.quality_max_attempts = 2
