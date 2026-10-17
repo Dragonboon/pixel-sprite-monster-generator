@@ -354,6 +354,25 @@ func run() -> void:
 	assert(generator.last_structure.is_empty())
 	generator.anatomy_profile = null
 	generator.structural_variants = true
+	# Palette roles and exact-color quantization are deterministic and alpha-safe.
+	var swatch := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	swatch.fill(Color.TRANSPARENT)
+	for sy in range(2, 30):
+		for sx in range(2, 30):
+			swatch.set_pixel(sx, sy, Color.from_hsv(float(sx) / 32.0, 0.62, float(sy) / 32.0))
+	for harmony in [CreatureColorTheory.Harmony.MONOCHROMATIC, CreatureColorTheory.Harmony.ANALOGOUS, CreatureColorTheory.Harmony.COMPLEMENTARY, CreatureColorTheory.Harmony.SPLIT_COMPLEMENTARY, CreatureColorTheory.Harmony.TRIADIC, CreatureColorTheory.Harmony.TETRADIC, CreatureColorTheory.Harmony.NEUTRAL_ACCENT, CreatureColorTheory.Harmony.AUTO]:
+		var spec: Dictionary = CreatureColorTheory.build(4200, 7, harmony, CreatureMood.Mood.NORMAL, CreatureMorphology.Archetype.SPIRIT)
+		var colors: PackedColorArray = spec["colors"]
+		assert(colors.size() == 7)
+		assert(colors == CreatureColorTheory.build(4200, 7, harmony, CreatureMood.Mood.NORMAL, CreatureMorphology.Archetype.SPIRIT)["colors"])
+		var exact: Image = CreatureColorTheory.quantize(swatch, colors, CreatureColorTheory.CountMode.EXACT)
+		var limited: Image = CreatureColorTheory.quantize(swatch, colors, CreatureColorTheory.CountMode.MAXIMUM)
+		assert(CreatureColorTheory.count_opaque_colors(exact) == 7)
+		assert(CreatureColorTheory.count_opaque_colors(limited) <= 7)
+		assert(exact.get_pixel(0, 0).a == 0.0)
+		assert(exact.get_data() == CreatureColorTheory.quantize(swatch, colors, CreatureColorTheory.CountMode.EXACT).get_data())
+	var monochrome: Dictionary = CreatureColorTheory.build(17, 1, CreatureColorTheory.Harmony.MONOCHROMATIC, CreatureMood.Mood.COZY, CreatureMorphology.Archetype.SLIME)
+	assert(CreatureColorTheory.count_opaque_colors(CreatureColorTheory.quantize(swatch, monochrome["colors"], CreatureColorTheory.CountMode.EXACT)) == 1)
 	# The cached finishing stage must preserve the original output and seeds.
 	generator.creature_archetype = CreatureMorphology.Archetype.SPIRIT
 	generator.anatomy_profile = CreatureAnatomyProfile.new()
