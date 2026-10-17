@@ -42,6 +42,9 @@ var export_button: Button
 var run_id: int = 0
 var progress: ProgressBar
 var benchmark_button: Button
+var page_selector: SpinBox
+const PAGE_SIZE: int = 12
+var finish_request: int = 0
 
 
 func _ready() -> void:
@@ -155,15 +158,15 @@ func _ready() -> void:
 	detail_slider.tooltip_text = "Interior pattern contrast"
 	art_controls.add_child(detail_slider)
 	mood_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
-	style_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
-	view_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
+	style_selector.item_selected.connect(func(_v: int) -> void: _refresh_finish())
+	view_selector.item_selected.connect(func(_v: int) -> void: _refresh_finish())
 	anatomy_enabled.toggled.connect(func(_v: bool) -> void: _regenerate())
 	compare_views.toggled.connect(func(_v: bool) -> void: _render_gallery())
 	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
-	shade_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
-	details_checkbox.toggled.connect(func(_v: bool) -> void: _regenerate())
+	shade_slider.drag_ended.connect(func(_v: bool) -> void: _refresh_finish())
+	details_checkbox.toggled.connect(func(_v: bool) -> void: _refresh_finish())
 	structure_checkbox.toggled.connect(func(_v: bool) -> void: _regenerate())
-	detail_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
+	detail_slider.drag_ended.connect(func(_v: bool) -> void: _refresh_finish())
 	family_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	preset_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	count_input.value_changed.connect(func(_v: float) -> void: _regenerate())
@@ -183,6 +186,15 @@ func _ready() -> void:
 	benchmark_button.text = "Benchmark 1 / 8 / 32 / 128"
 	benchmark_button.pressed.connect(_benchmark)
 	controls.add_child(benchmark_button)
+	page_selector = SpinBox.new()
+	page_selector.min_value = 1
+	page_selector.max_value = 1
+	page_selector.step = 1
+	page_selector.rounded = true
+	page_selector.value = 1
+	page_selector.tooltip_text = "Gallery page (12 sprites per page)"
+	controls.add_child(page_selector)
+	page_selector.value_changed.connect(func(_value: float) -> void: _render_gallery())
 	status_label = Label.new()
 	layout.add_child(status_label)
 	_regenerate()
@@ -202,6 +214,7 @@ func _new_seed() -> void:
 
 func _regenerate() -> void:
 	run_id += 1
+	finish_request += 1
 	var own_id: int = run_id
 	current_items.clear()
 	rendered_images.clear()
@@ -223,17 +236,51 @@ func _regenerate() -> void:
 		item["index"] = index
 		current_items.append(item)
 		progress.value = index + 1
-		if (index + 1) % 4 == 0 or index + 1 == requested:
+		if index + 1 == requested or (index + 1) % 1 == 0:
 			_show_status("Generating %d/%d..." % [index + 1, requested], false)
 			await get_tree().process_frame
 	if own_id != run_id:
 		return
+	page_selector.max_value = maxi(1, ceili(float(current_items.size()) / float(PAGE_SIZE)))
+	page_selector.value = 1
 	var diversity: Dictionary = CreatureVariety.summarize(current_items)
 	for item in current_items:
 		rendered_images.append(item["image"])
 	_render_gallery()
 	var elapsed: float = float(Time.get_ticks_usec() - started) / 1000.0
 	_show_status("Generated %d in %.0f ms (%.1f ms/creature) · unique silhouettes %d/%d · near duplicates %d" % [requested, elapsed, elapsed / float(requested), int(diversity["silhouette_unique"]), requested, int(diversity["near_duplicates"])], false)
+
+
+## Restyle the cached images only: no quality search or temporary generators.
+## Yield after each sprite so sliding cannot monopolize a full frame.
+func _refresh_finish() -> void:
+	finish_request += 1
+	var request_id: int = finish_request
+	if current_items.is_empty():
+		return
+	var updated: int = 0
+	for item in current_items:
+		if request_id != finish_request:
+			return
+		var source: Image = item.get("source_image")
+		if source == null:
+			continue
+		item["image"] = CreaturePreviewComposer.compose(
+			source, int(item.get("archetype", 0)), item.get("traits", {}),
+			details_checkbox.button_pressed, detail_slider.value,
+			style_selector.selected, view_selector.selected, shade_slider.value,
+			0.18, 0.0, int(item["selected_seed"])
+		)
+		updated += 1
+		if updated % 4 == 0:
+			await get_tree().process_frame
+	if request_id != finish_request:
+		return
+	rendered_images.clear()
+	for item in current_items:
+		rendered_images.append(item["image"])
+	_render_gallery()
+	_show_status("Updated finish on %d cached sprites (anatomy unchanged)." % updated, false)
 
 
 func _benchmark() -> void:
@@ -298,8 +345,12 @@ func _render_gallery() -> void:
 	for child in gallery.get_children():
 		gallery.remove_child(child)
 		child.queue_free()
+	var page_start: int = (int(page_selector.value) - 1) * PAGE_SIZE
+	var page_end: int = page_start + PAGE_SIZE
 	for item in current_items:
 		var index: int = int(item["index"])
+		if index < page_start or index >= page_end:
+			continue
 		var key: String = _favorite_key(item)
 		if favorites_only.button_pressed and not saved_favorites.has(key):
 			continue
@@ -332,7 +383,7 @@ func _render_gallery() -> void:
 		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		preview.custom_minimum_size = Vector2(250, 160)
 		contents.add_child(preview)
-		if compare_views.button_pressed and index < 12:
+		if compare_views.button_pressed and index < page_end:
 			var old_preset: CreatureGenerationPreset = _build_preset(index)
 			if CreatureAnatomyRefiner.supports(old_preset.creature_archetype):
 				old_preset.refined_anatomy = false
