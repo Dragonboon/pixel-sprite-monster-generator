@@ -373,6 +373,16 @@ func run() -> void:
 		assert(exact.get_data() == CreatureColorTheory.quantize(swatch, colors, CreatureColorTheory.CountMode.EXACT).get_data())
 	var monochrome: Dictionary = CreatureColorTheory.build(17, 1, CreatureColorTheory.Harmony.MONOCHROMATIC, CreatureMood.Mood.COZY, CreatureMorphology.Archetype.SLIME)
 	assert(CreatureColorTheory.count_opaque_colors(CreatureColorTheory.quantize(swatch, monochrome["colors"], CreatureColorTheory.CountMode.EXACT)) == 1)
+	# Refined quantization preserves alpha and palette counts deterministically.
+	var spec_refined: Dictionary = CreatureColorTheory.build(42, 6, CreatureColorTheory.Harmony.ANALOGOUS, CreatureMood.Mood.NORMAL, CreatureMorphology.Archetype.GOLEM)
+	var detail_guide := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	detail_guide.fill(Color.TRANSPARENT)
+	detail_guide.set_pixel(14, 14, Color.WHITE)
+	var mapped: Image = CreatureColorTheory.quantize_refined(swatch, spec_refined["colors"], spec_refined["roles"], CreatureColorTheory.CountMode.EXACT, detail_guide)
+	assert(CreatureColorTheory.count_opaque_colors(mapped) == 6)
+	assert(mapped.get_pixel(0, 0).a == 0.0)
+	assert(mapped.get_data() == CreatureColorTheory.quantize_refined(swatch, spec_refined["colors"], spec_refined["roles"], CreatureColorTheory.CountMode.EXACT, detail_guide).get_data())
+	assert(CreatureColorTheory.count_opaque_colors(CreatureColorTheory.quantize_refined(swatch, spec_refined["colors"], spec_refined["roles"], CreatureColorTheory.CountMode.MAXIMUM, detail_guide)) <= 6)
 	# The cached finishing stage must preserve the original output and seeds.
 	generator.creature_archetype = CreatureMorphology.Archetype.SPIRIT
 	generator.anatomy_profile = CreatureAnatomyProfile.new()

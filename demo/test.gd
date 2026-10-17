@@ -300,17 +300,22 @@ func _refresh_finish() -> void:
 			0.18, 0.0, int(item["selected_seed"])
 		)
 		if harmony_enabled.button_pressed:
-			var palette: PackedColorArray = item.get("palette", PackedColorArray())
-			if palette.is_empty():
-				palette = CreatureColorTheory.build(
+			var specification: Dictionary = CreatureColorTheory.build(
 				int(item["selected_seed"]), int(color_count_spinner.value),
 				harmony_select.selected, mood_selector.selected,
 				int(item.get("archetype", 0))
-			)["colors"]
+			)
+			var palette: PackedColorArray = specification["colors"]
+			var guide: Image = null
+			if details_checkbox.button_pressed and not item.get("traits", {}).is_empty():
+				guide = CreatureColorDetailGuide.build(source, int(item.get("archetype", 0)),
+					item.get("traits", {}), detail_slider.value, view_selector.selected)
 			item["palette"] = palette
-			item["harmony"] = harmony_select.selected
+			item["palette_roles"] = specification["roles"]
+			item["harmony"] = specification["harmony"]
 			item["color_count_mode"] = color_count_select.selected
-			item["image"] = CreatureColorTheory.quantize(item["image"], palette, color_count_select.selected)
+			item["image"] = CreatureColorTheory.quantize_refined(
+				item["image"], palette, specification["roles"], color_count_select.selected, guide)
 		updated += 1
 		if updated % 4 == 0:
 			await get_tree().process_frame
@@ -325,8 +330,6 @@ func _refresh_finish() -> void:
 
 ## Palette-only changes keep all silhouettes and selected seeds intact.
 func _refresh_palette() -> void:
-	for item in current_items:
-		item["palette"] = PackedColorArray()
 	_refresh_finish()
 
 

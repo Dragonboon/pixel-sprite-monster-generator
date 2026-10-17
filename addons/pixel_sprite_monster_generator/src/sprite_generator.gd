@@ -373,7 +373,10 @@ func _finish_harmonious(source: Image) -> Image:
 		visual_style, view_mode, shading_strength, dithering_strength,
 		glitch_strength, last_seed
 	)
-	return CreatureColorTheory.quantize(finished, last_palette, color_count_mode)
+	var guide: Image = null
+	if internal_details_enabled and refined_anatomy and not last_traits.is_empty():
+		guide = CreatureColorDetailGuide.build(source, creature_archetype, last_traits, internal_detail_strength, view_mode)
+	return CreatureColorTheory.quantize_refined(finished, last_palette, last_palette_roles, color_count_mode, guide)
 
 
 ## Use user:// in exported games. Parent directory must already exist.
