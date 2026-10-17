@@ -309,6 +309,12 @@ func _set_owner_to_edited_scene_root(node: Node) -> void:
 ## Static, unscaled sprite in its neutral pose, with one transparent pixel of padding.
 ## Animation is deliberately not baked into the image. Works without a renderer.
 func get_image() -> Image:
+	return finish_image(get_unfinished_image())
+
+
+## Unfinished, colored native-resolution image before detail and view filters.
+## Use it to rerender multiple visual styles without regenerating anatomy.
+func get_unfinished_image() -> Image:
 	if not is_instance_valid(cell_group_drawer) or cell_group_drawer.cells().is_empty():
 		return null
 	var result := Image.create(int(sprite_size.x) + 2, int(sprite_size.y) + 2, false, Image.FORMAT_RGBA8)
@@ -327,11 +333,17 @@ func get_image() -> Image:
 			if drawer.is_eye and center.distance_to(cell.position) < eye_radius:
 				color = color.darkened(0.85)
 			result.set_pixelv(point, color)
-	if not last_traits.is_empty() and internal_details_enabled and refined_anatomy:
-		result = CreatureInternalDetails.render(result, creature_archetype, last_traits, internal_detail_strength)
-	if visual_style != CreaturePixelEffects.Style.CLASSIC or view_mode != CreaturePixelEffects.View.FRONT or shading_strength > 0.0 or dithering_strength > 0.0 or glitch_strength > 0.0:
-		return CreaturePixelEffects.process(result, visual_style, view_mode, shading_strength, dithering_strength, glitch_strength, last_seed)
 	return result
+
+
+## Applies the visual finish only; no morphology, palette, or quality rerolls.
+func finish_image(source: Image) -> Image:
+	return CreaturePreviewComposer.compose(
+		source, creature_archetype, last_traits if refined_anatomy else {},
+		internal_details_enabled, internal_detail_strength,
+		visual_style, view_mode, shading_strength, dithering_strength,
+		glitch_strength, last_seed
+	)
 
 
 ## Use user:// in exported games. Parent directory must already exist.

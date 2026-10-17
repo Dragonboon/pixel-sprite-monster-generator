@@ -71,7 +71,10 @@ static func _append_range(items: Array[Dictionary], worker: PixelSpriteMonsterGe
 		var started: int = Time.get_ticks_usec()
 		worker.manual_seed = requested
 		worker.draw_sprite()
-		var image: Image = worker.get_image()
+		var source_image: Image = worker.get_unfinished_image()
+		if source_image == null or source_image.is_empty():
+			return
+		var image: Image = worker.finish_image(source_image)
 		if image == null or image.is_empty():
 			return
 		items.append({
@@ -87,7 +90,9 @@ static func _append_range(items: Array[Dictionary], worker: PixelSpriteMonsterGe
 			"anatomy_metrics": worker.last_anatomy_metrics.duplicate(true),
 			"traits": worker.last_traits.duplicate(true),
 			"structure": worker.last_structure.duplicate(true),
-			"image": image
+			"image": image,
+			"source_image": source_image,
+			"archetype": worker.creature_archetype
 		})
 
 
