@@ -19,6 +19,8 @@ var seed_input: SpinBox
 var status_label: Label
 var rendered_images: Array[Image] = []
 var random_source := RandomNumberGenerator.new()
+var horror_selector: OptionButton
+var uncanny_slider: HSlider
 var mood_selector: OptionButton
 var style_selector: OptionButton
 var quality_slider: HSlider
@@ -110,6 +112,19 @@ func _ready() -> void:
 	for item in ["Normal", "Cozy", "Horror", "Epic"]:
 		mood_selector.add_item(item)
 	art_controls.add_child(mood_selector)
+	horror_selector = OptionButton.new()
+	horror_selector.add_item("Horror: Classic")
+	horror_selector.add_item("Horror: Uncanny valley")
+	horror_selector.tooltip_text = "Only active for Horror with Biped, Spirit or Golem"
+	art_controls.add_child(horror_selector)
+	uncanny_slider = HSlider.new()
+	uncanny_slider.min_value = 0.0
+	uncanny_slider.max_value = 1.0
+	uncanny_slider.step = 0.05
+	uncanny_slider.value = 0.75
+	uncanny_slider.custom_minimum_size.x = 100
+	uncanny_slider.tooltip_text = "Uncanny distortion strength"
+	art_controls.add_child(uncanny_slider)
 	style_selector = OptionButton.new()
 	for item in ["Classic", "Handheld", "JRPG", "Dungeon", "Cozy", "Arcade"]:
 		style_selector.add_item(item)
@@ -181,7 +196,15 @@ func _ready() -> void:
 	detail_slider.custom_minimum_size.x = 90
 	detail_slider.tooltip_text = "Interior pattern contrast"
 	art_controls.add_child(detail_slider)
-	mood_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
+	mood_selector.item_selected.connect(func(_v: int) -> void:
+		_update_horror_controls()
+		_regenerate()
+	)
+	horror_selector.item_selected.connect(func(_v: int) -> void:
+		_update_horror_controls()
+		_regenerate()
+	)
+	uncanny_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	style_selector.item_selected.connect(func(_v: int) -> void: _refresh_finish())
 	view_selector.item_selected.connect(func(_v: int) -> void: _refresh_finish())
 	anatomy_enabled.toggled.connect(func(_v: bool) -> void: _regenerate())
@@ -225,7 +248,14 @@ func _ready() -> void:
 	page_selector.value_changed.connect(func(_value: float) -> void: _render_gallery())
 	status_label = Label.new()
 	layout.add_child(status_label)
+	_update_horror_controls()
 	_regenerate()
+
+
+func _update_horror_controls() -> void:
+	var active: bool = mood_selector.selected == CreatureMood.Mood.HORROR
+	horror_selector.disabled = not active
+	uncanny_slider.editable = active and horror_selector.selected == CreatureHorrorProfile.Profile.UNCANNY
 
 
 func _add_button(parent: HBoxContainer, caption: String, callback: Callable) -> void:
@@ -300,7 +330,8 @@ func _refresh_finish() -> void:
 			0.18, 0.0, int(item["selected_seed"])
 		)
 		if harmony_enabled.button_pressed:
-			var specification: Dictionary = CreatureColorTheory.build(
+			var use_uncanny_palette: bool = mood_selector.selected == CreatureMood.Mood.HORROR and horror_selector.selected == CreatureHorrorProfile.Profile.UNCANNY and CreatureHorrorProfile.supports(int(item.get("archetype", 0))) and harmony_select.selected == CreatureColorTheory.Harmony.AUTO
+			var specification: Dictionary = CreatureHorrorProfile.palette(int(item["selected_seed"]), int(color_count_spinner.value)) if use_uncanny_palette else CreatureColorTheory.build(
 				int(item["selected_seed"]), int(color_count_spinner.value),
 				harmony_select.selected, mood_selector.selected,
 				int(item.get("archetype", 0))
@@ -383,6 +414,8 @@ func _build_preset(index: int) -> CreatureGenerationPreset:
 		preset.quality_min_score = quality_slider.value
 		preset.quality_max_attempts = 8
 		preset.refined_anatomy = true
+	preset.horror_profile = horror_selector.selected
+	preset.uncanny_strength = uncanny_slider.value
 	preset.structural_variants = structure_checkbox.button_pressed
 	preset.color_theory_enabled = harmony_enabled.button_pressed
 	preset.color_harmony = harmony_select.selected

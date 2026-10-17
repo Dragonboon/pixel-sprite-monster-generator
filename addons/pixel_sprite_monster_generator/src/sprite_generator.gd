@@ -36,6 +36,9 @@ var last_traits: Dictionary = {}
 var last_anatomy: Dictionary = {}
 @export_category("Art Direction")
 @export var silhouette_mood: CreatureMood.Mood = CreatureMood.Mood.NORMAL
+## Only affects Horror on Biped, Spirit and Golem. Classic is unchanged.
+@export var horror_profile: CreatureHorrorProfile.Profile = CreatureHorrorProfile.Profile.CLASSIC
+@export_range(0.0, 1.0, 0.05) var uncanny_strength: float = 0.75
 @export_category("Pixel Art Finish")
 @export var visual_style: CreaturePixelEffects.Style = CreaturePixelEffects.Style.CLASSIC
 @export var view_mode: CreaturePixelEffects.View = CreaturePixelEffects.View.FRONT
@@ -212,7 +215,11 @@ func draw_sprite() -> void:
 			if shape_values.is_empty():
 				shape_values = {"body_width": 0.44, "body_height": 0.52, "head": 0.25, "appendage": 0.24}
 			candidate = CreatureStructuralVariants.apply(candidate, creature_archetype, anatomy_strength, shape_values, candidate_structure, candidate_seed)
-		if silhouette_mood != CreatureMood.Mood.NORMAL:
+		var uncanny_enabled: bool = silhouette_mood == CreatureMood.Mood.HORROR and horror_profile == CreatureHorrorProfile.Profile.UNCANNY and CreatureHorrorProfile.supports(creature_archetype) and anatomy_strength > 0.0
+		if uncanny_enabled:
+			candidate_structure = CreatureHorrorProfile.sample(candidate_seed, uncanny_strength)
+			candidate = CreatureHorrorProfile.apply(candidate, creature_archetype, candidate_structure)
+		elif silhouette_mood != CreatureMood.Mood.NORMAL:
 			candidate = CreatureMood.apply(candidate, silhouette_mood, candidate_seed)
 		var measurement: Dictionary = CreatureQuality.measure(candidate)
 		var score: float = float(measurement["score"])
@@ -263,7 +270,8 @@ func draw_sprite() -> void:
 			eye_scheme = color_scheme_generator.generate_random_rgb_colors(num_of_colors)
 			
 	if color_theory_enabled:
-		var palette_result: Dictionary = CreatureColorTheory.build(
+		var use_uncanny_palette: bool = silhouette_mood == CreatureMood.Mood.HORROR and horror_profile == CreatureHorrorProfile.Profile.UNCANNY and CreatureHorrorProfile.supports(creature_archetype) and color_harmony == CreatureColorTheory.Harmony.AUTO
+		var palette_result: Dictionary = CreatureHorrorProfile.palette(last_seed, target_color_count) if use_uncanny_palette else CreatureColorTheory.build(
 			last_seed, target_color_count, color_harmony,
 			silhouette_mood, creature_archetype, color_saturation, color_value
 		)

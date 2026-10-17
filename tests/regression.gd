@@ -373,6 +373,25 @@ func run() -> void:
 		assert(exact.get_data() == CreatureColorTheory.quantize(swatch, colors, CreatureColorTheory.CountMode.EXACT).get_data())
 	var monochrome: Dictionary = CreatureColorTheory.build(17, 1, CreatureColorTheory.Harmony.MONOCHROMATIC, CreatureMood.Mood.COZY, CreatureMorphology.Archetype.SLIME)
 	assert(CreatureColorTheory.count_opaque_colors(CreatureColorTheory.quantize(swatch, monochrome["colors"], CreatureColorTheory.CountMode.EXACT)) == 1)
+	# Uncanny Horror has six distinct, deterministic connected figures, while
+	# the classic Horror path and unsupported families remain unaffected.
+	var uncanny_types: Dictionary = {}
+	var horror_map: Array[Variant] = []
+	for xx in 48:
+		var column: Array[bool] = []
+		column.resize(48)
+		column.fill(false)
+		horror_map.append(column)
+	for uncanny_seed in range(36, 42):
+		var traits: Dictionary = CreatureHorrorProfile.sample(uncanny_seed, 0.85)
+		var figure: Array[Variant] = CreatureHorrorProfile.apply(horror_map, CreatureMorphology.Archetype.BIPED, traits)
+		assert(figure == CreatureHorrorProfile.apply(horror_map, CreatureMorphology.Archetype.BIPED, traits))
+		assert(float(CreatureQuality.measure(figure)["connected_ratio"]) >= 0.70)
+		uncanny_types[traits["subtype"]] = true
+	assert(uncanny_types.size() == 6)
+	assert(CreatureHorrorProfile.apply(horror_map, CreatureMorphology.Archetype.SLIME, CreatureHorrorProfile.sample(42, 0.8)) == horror_map)
+	var horror_palette: Dictionary = CreatureHorrorProfile.palette(42, 7)
+	assert((horror_palette["colors"] as PackedColorArray).size() == 7)
 	# Refined quantization preserves alpha and palette counts deterministically.
 	var spec_refined: Dictionary = CreatureColorTheory.build(42, 6, CreatureColorTheory.Harmony.ANALOGOUS, CreatureMood.Mood.NORMAL, CreatureMorphology.Archetype.GOLEM)
 	var detail_guide := Image.create(32, 32, false, Image.FORMAT_RGBA8)

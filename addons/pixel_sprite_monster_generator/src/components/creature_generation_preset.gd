@@ -24,6 +24,8 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var anatomy_strength: float = 0.9
 @export var facial_eyes: bool = true
 @export var silhouette_mood: CreatureMood.Mood = CreatureMood.Mood.NORMAL
+@export var horror_profile: CreatureHorrorProfile.Profile = CreatureHorrorProfile.Profile.CLASSIC
+@export_range(0.0, 1.0, 0.05) var uncanny_strength: float = 0.75
 
 @export_group("Palette")
 @export_range(1, 64, 1) var number_of_colors: int = 10
@@ -71,6 +73,8 @@ func apply_to(generator: PixelSpriteMonsterGenerator) -> void:
 	generator.anatomy_strength = anatomy_strength
 	generator.facial_eyes = facial_eyes
 	generator.silhouette_mood = silhouette_mood
+	generator.horror_profile = horror_profile
+	generator.uncanny_strength = uncanny_strength
 	generator.number_of_colors = number_of_colors
 	generator.custom_color_palette = custom_color_palette
 	generator.color_theory_enabled = color_theory_enabled

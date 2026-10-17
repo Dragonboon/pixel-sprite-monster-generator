@@ -291,3 +291,11 @@ Los controles de teoría del color de la demo recalculan la paleta a partir de i
 ### Distribución de color más limpia
 
 Las armonías usan **rampas tonales por función**, no una búsqueda independiente del tono más parecido para cada píxel. El cuerpo mantiene regiones más coherentes de luz y sombra; se protegen contornos y marcas interiores, reservando el acento para una parte pequeña del sprite. Una limpieza local elimina píxeles de color aislados sin borrar detalles importantes. `MAXIMUM` limita los colores RGB visibles del PNG, y `EXACT` completa los tonos no utilizados después de limpiar, cuando hay suficientes píxeles opacos. Los controles de color de la demo recomponen las imágenes en caché sin regenerar anatomía. Se mantiene `quantize()` como alternativa compatible con versiones anteriores.
+
+## Horror Uncanny — terror psicológico y misterio
+
+En la demo selecciona el ambiente **Horror** y después **Horror: Uncanny valley**. Esta opción crea seis siluetas deliberadamente inquietantes — **Mask, Puppet, Hollow, Watcher, Lurker y Broken Saint** — mediante una anatomía casi humana y proporciones de referencia basadas en el número áureo (φ ≈ 1,618). Las pequeñas desviaciones, simetrías ligeramente imperfectas, ojos vacíos y posturas rígidas buscan transmitir inquietud sin recurrir a gore ni a deformaciones aleatorias. El deslizador **Uncanny distortion strength** regula la intensidad.
+
+Actualmente funciona en **Biped, Spirit y Golem**. Las demás familias siguen utilizando Horror normal. Está desactivado por defecto (**Classic Horror**) para conservar tus escenas anteriores. Con **Color Theory** activado y armonía **Auto**, se elige una paleta de tonos apagados (verde ceniza, azul frío, violeta o hueso), con un acento poco invasivo; las armonías seleccionadas manualmente se respetan. Puedes seguir eligiendo **Maximum / Exact** para limitar colores.
+
+Para código, configura `silhouette_mood = CreatureMood.Mood.HORROR`, `horror_profile = CreatureHorrorProfile.Profile.UNCANNY` y opcionalmente `uncanny_strength = 0.75`. También está disponible en `CreatureGenerationPreset`. El subtipo se guarda en `last_structure` y en los lotes exportados. Las variaciones siguen siendo reproducibles por semilla y el sombreado se modifica desde caché.

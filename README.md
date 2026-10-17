@@ -295,3 +295,11 @@ The demo's Color Theory controls reapply harmonies and limits to cached native i
 ### Cleaner color distribution
 
 Harmonious palettes now use **role-aware tonal ramps**, not independent nearest-color matching on each pixel. Neighboring body pixels share coherent light/shadow regions; outlines and generated markings can be protected as accent areas, with the accent limited to a small portion of the body. A conservative local cleanup removes isolated color noise without erasing meaningful marks. `MAXIMUM` limits final opaque RGB colors, while `EXACT` fills unused palette roles after cleanup when enough opaque pixels exist. The demo recalculates harmony and tonal finish using cached sprites: color controls no longer reroll anatomy. The original `quantize()` remains available for compatibility.
+
+## Uncanny Horror — mystery and psychological tension
+
+Choose **Horror** as the mood and then **Horror: Uncanny valley** in the laboratory. This optional setting creates six subtly unsettling figures — **Mask, Puppet, Hollow, Watcher, Lurker, Broken Saint** — using near-human anatomy and the golden ratio (φ ≈ 1.618) to guide the proportions of heads, necks and limbs. Small controlled deviations, slightly inconsistent symmetry, empty-looking eyes and restrained silhouettes aim for a mysterious atmosphere rather than gore or random deformation. The `Uncanny distortion strength` slider tunes how far the proportions deviate.
+
+Uncanny anatomy currently supports **Biped, Spirit and Golem**; other families use their normal Horror behavior. The feature is opt-in: existing scenes continue using **Classic Horror**. For palette harmony **Auto**, enabling Color Theory also selects a subdued palette (ashen green, cold blue, violet or bone, with a small unnatural accent). Explicitly selected harmonies retain their normal behavior. The existing **Exact / Maximum** count applies unchanged.
+
+API: set `silhouette_mood = CreatureMood.Mood.HORROR`, `horror_profile = CreatureHorrorProfile.Profile.UNCANNY` and optionally `uncanny_strength = 0.75`. The same properties exist on `CreatureGenerationPreset`. The selected subtype is recorded in `last_structure` and batch manifests. All choices are deterministic from the seed; palette-only editing does not regenerate geometry.
