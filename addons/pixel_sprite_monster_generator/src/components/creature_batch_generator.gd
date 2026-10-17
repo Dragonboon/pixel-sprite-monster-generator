@@ -9,13 +9,11 @@ const DEFAULT_SEED_STEP: int = 7919
 
 
 static func generate(preset: CreatureGenerationPreset, parent: Node, count: int, first_seed: int, seed_step: int = DEFAULT_SEED_STEP) -> Array[Dictionary]:
-	var items: Array[Dictionary] = []
-	if _validate_encounter(preset, parent, count) != OK or count > MAX_ITEMS:
-		return items
-	var worker: PixelSpriteMonsterGenerator = _create_worker(preset, parent)
-	_append_range(items, worker, 0, count, first_seed, seed_step)
-	_release_worker(worker)
-	return items
+	if count < 1 or count > MAX_ITEMS:
+		return []
+	# Reuse the encounter implementation: same worker and metadata.
+	var result: Dictionary = generate_encounter(preset, parent, count, first_seed, seed_step)
+	return result["items"] if result["error"] == OK else []
 
 
 ## Exactly 1..128 results or an explicit error; never truncate the count.

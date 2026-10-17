@@ -178,7 +178,6 @@ func draw_sprite() -> void:
 	var best_mask: Array[Variant] = []
 	var attempts: int = clampi(quality_max_attempts, 1, 32) if quality_enabled or anatomy_integrity_enabled else 1
 	quality_accepted = false
-	last_anatomy_metrics = {}
 	var best_anatomy: Dictionary = {}
 	var best_anatomy_metrics: Dictionary = {}
 	var best_structure: Dictionary = {}
@@ -281,16 +280,12 @@ func draw_sprite() -> void:
 		scheme = custom_color_palette.colors
 		eye_scheme = custom_color_palette.colors
 	else:
-		if _color_generation_is_hsv():
-			scheme = color_scheme_generator.generate_random_hsv_colors(num_of_colors, color_saturation, color_value)
-		elif _color_generation_is_random_rgb():
-			scheme = color_scheme_generator.generate_random_rgb_colors(num_of_colors)
-		
-		if _eye_color_generation_is_hsv():
-			eye_scheme = color_scheme_generator.generate_random_hsv_colors(num_of_colors, eye_color_saturation, eye_color_value)
-		elif _eye_color_generation_is_random_rgb():
-			eye_scheme = color_scheme_generator.generate_random_rgb_colors(num_of_colors)
-			
+		# The body and eye palettes keep their original RNG draw order.
+		scheme = color_scheme_generator.generate_palette(
+			color_generation_method, num_of_colors, color_saturation, color_value)
+		eye_scheme = color_scheme_generator.generate_palette(
+			eye_color_generation_method, num_of_colors, eye_color_saturation, eye_color_value)
+
 	if color_theory_enabled:
 		var use_uncanny_palette: bool = silhouette_mood == CreatureMood.Mood.HORROR and horror_profile == CreatureHorrorProfile.Profile.UNCANNY and CreatureHorrorProfile.supports(creature_archetype) and color_harmony == CreatureColorTheory.Harmony.AUTO
 		var palette_result: Dictionary = CreatureHorrorProfile.palette(last_seed, target_color_count) if use_uncanny_palette else CreatureColorTheory.build(
@@ -333,29 +328,6 @@ func clear() -> void:
 	all_color_groups.clear()
 
 
-#region Helpers
-func _color_generation_is_hsv() -> bool:
-	return color_generation_method == ColorSchemeGenerator.ColorGenerationMethod.GoldenRatioHSV
-
-
-func _color_generation_is_random_rgb() -> bool:
-	return color_generation_method == ColorSchemeGenerator.ColorGenerationMethod.RandomRGB
-
-
-func _eye_color_generation_is_hsv() -> bool:
-	return eye_color_generation_method == ColorSchemeGenerator.ColorGenerationMethod.GoldenRatioHSV
-
-
-func _eye_color_generation_is_random_rgb() -> bool:
-	return eye_color_generation_method == ColorSchemeGenerator.ColorGenerationMethod.RandomRGB
-
-
-func _set_owner_to_edited_scene_root(node: Node) -> void:
-	if Engine.is_editor_hint() and node.get_tree():
-		node.owner = node.get_tree().edited_scene_root
-#endregion
-
-
 ## Static, unscaled sprite in its neutral pose, with one transparent pixel of padding.
 ## Animation is deliberately not baked into the image. Works without a renderer.
 func get_image() -> Image:
@@ -388,25 +360,20 @@ func get_unfinished_image() -> Image:
 
 ## Applies the visual finish only; no morphology, palette, or quality rerolls.
 func finish_image(source: Image) -> Image:
-	return CreaturePreviewComposer.compose(
-		source, creature_archetype, last_traits if refined_anatomy else {},
-		internal_details_enabled, internal_detail_strength,
-		visual_style, view_mode, shading_strength, dithering_strength,
-		glitch_strength, last_seed
-	) if not color_theory_enabled else _finish_harmonious(source)
-
-
-func _finish_harmonious(source: Image) -> Image:
 	var finished: Image = CreaturePreviewComposer.compose(
 		source, creature_archetype, last_traits if refined_anatomy else {},
 		internal_details_enabled, internal_detail_strength,
 		visual_style, view_mode, shading_strength, dithering_strength,
 		glitch_strength, last_seed
 	)
+	if not color_theory_enabled or finished == null:
+		return finished
 	var guide: Image = null
 	if internal_details_enabled and refined_anatomy and not last_traits.is_empty():
-		guide = CreatureColorDetailGuide.build(source, creature_archetype, last_traits, internal_detail_strength, view_mode)
-	return CreatureColorTheory.quantize_refined(finished, last_palette, last_palette_roles, color_count_mode, guide)
+		guide = CreatureColorDetailGuide.build(
+			source, creature_archetype, last_traits, internal_detail_strength, view_mode)
+	return CreatureColorTheory.quantize_refined(
+		finished, last_palette, last_palette_roles, color_count_mode, guide)
 
 
 ## Use user:// in exported games. Parent directory must already exist.

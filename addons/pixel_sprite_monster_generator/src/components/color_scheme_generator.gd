@@ -13,6 +13,16 @@ enum ColorGenerationMethod {
 	GoldenRatioHSV
 }
 
+## Shared method dispatch for body and eye palette generation.
+## Calls the original implementations, preserving RNG draw order.
+func generate_palette(method: ColorGenerationMethod, count: int, saturation: float, value: float) -> PackedColorArray:
+	match method:
+		ColorGenerationMethod.RandomRGB:
+			return generate_random_rgb_colors(count)
+		_:
+			return generate_random_hsv_colors(count, saturation, value)
+
+
 # Using ideas from https://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
 func generate_random_hsv_colors(number_of_colors: int = 12, saturation: float = 0.5, value: float = 0.95) -> PackedColorArray:
 	var colors: PackedColorArray = PackedColorArray()
