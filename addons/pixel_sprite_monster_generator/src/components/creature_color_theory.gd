@@ -198,3 +198,166 @@ static func _distance(a: Color, b: Color) -> float:
 	var dg: float = a.g - b.g
 	var db: float = a.b - b.b
 	return 0.30 * dr * dr + 0.59 * dg * dg + 0.11 * db * db
+
+
+## Role-aware palette assignment with region-coherent tonal bands.
+## Optional guide: opaque white pixels mark deliberately painted internal details.
+## Exact-mode filling happens after cleanup, so cleaning cannot drop a color.
+static func quantize_refined(source: Image, palette: PackedColorArray, roles: Dictionary, mode: CountMode, detail_guide: Image = null) -> Image:
+	if source == null:
+		return null
+	if palette.is_empty():
+		return source.duplicate()
+	var w: int = source.get_width()
+	var h: int = source.get_height()
+	var n: int = palette.size()
+	var result := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	result.fill(Color.TRANSPARENT)
+	if w == 0 or h == 0:
+		return result
+	var labels := PackedInt32Array()
+	labels.resize(w * h)
+	labels.fill(-1)
+	var lightness := PackedFloat32Array()
+	lightness.resize(w * h)
+	var protected := PackedByteArray()
+	protected.resize(w * h)
+	protected.fill(0)
+	var usage := PackedInt32Array()
+	usage.resize(n)
+	usage.fill(0)
+	var occupied: int = 0
+	var lo: float = 1.0
+	var hi: float = 0.0
+	for y in h:
+		for x in w:
+			var pixel: Color = source.get_pixel(x, y)
+			if pixel.a <= 0.0:
+				continue
+			occupied += 1
+			var lum: float = pixel.get_luminance()
+			lightness[y * w + x] = lum
+			lo = minf(lo, lum)
+			hi = maxf(hi, lum)
+	if occupied == 0:
+		return result
+	var outline: int = _role_index(roles, "outline", 0, n)
+	var shadow: int = _role_index(roles, "shadow", 1, n)
+	var body: int = _role_index(roles, "body", n / 2, n)
+	var accent: int = _role_index(roles, "accent", n - 2, n)
+	var highlight: int = _role_index(roles, "highlight", n - 1, n)
+	var accent_allowed: bool = n >= 5 and detail_guide != null and detail_guide.get_size() == source.get_size()
+	# Only a small proportion of the silhouette can carry a vivid accent.
+	var accent_budget: int = maxi(1, roundi(float(occupied) * 0.06)) if accent_allowed else 0
+	var accents_used: int = 0
+	var ramp: Array[int] = []
+	for i in range(1, maxi(2, n - 2)):
+		if i != accent and i != highlight:
+			ramp.append(i)
+	if ramp.is_empty():
+		ramp.append(body)
+	for y in h:
+		for x in w:
+			var index: int = y * w + x
+			var pixel: Color = source.get_pixel(x, y)
+			if pixel.a <= 0.0:
+				continue
+			var is_edge: bool = x == 0 or y == 0 or x == w - 1 or y == h - 1
+			if not is_edge:
+				is_edge = source.get_pixel(x - 1, y).a <= 0.0 or source.get_pixel(x + 1, y).a <= 0.0 or source.get_pixel(x, y - 1).a <= 0.0 or source.get_pixel(x, y + 1).a <= 0.0
+			var guide_mark: bool = accent_allowed and detail_guide.get_pixel(x, y).a > 0.5
+			var chosen: int = body
+			if n == 1:
+				chosen = 0
+			elif is_edge:
+				chosen = outline
+				protected[index] = 1
+			elif guide_mark and accents_used < accent_budget:
+				chosen = accent
+				protected[index] = 1
+				accents_used += 1
+			else:
+				# A spatially averaged brightness suppresses checker/noise
+				# fluctuations while retaining large shading volumes.
+				var total: float = lightness[index] * 2.0
+				var total_weight: float = 2.0
+				for delta in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					var nx: int = x + delta.x
+					var ny: int = y + delta.y
+					if nx >= 0 and nx < w and ny >= 0 and ny < h and source.get_pixel(nx, ny).a > 0.0:
+						total += lightness[ny * w + nx]
+						total_weight += 1.0
+				var averaged: float = total / total_weight
+				var normalized: float = clampf((averaged - lo) / maxf(0.18, hi - lo), 0.0, 1.0)
+				if guide_mark and normalized < 0.35:
+					chosen = shadow
+					protected[index] = 1
+				elif n > 3 and normalized > 0.90 and (y < h / 2):
+					chosen = highlight
+					protected[index] = 1
+				else:
+					chosen = ramp[clampi(floori(normalized * float(ramp.size())), 0, ramp.size() - 1)]
+			labels[index] = clampi(chosen, 0, n - 1)
+			usage[labels[index]] += 1
+	# Remove one-pixel fluctuations only from ordinary interior body colors.
+	# A direct-neighbor consensus deliberately avoids blurring real details.
+	var cleaned: PackedInt32Array = labels.duplicate()
+	for y in range(1, h - 1):
+		for x in range(1, w - 1):
+			var index: int = y * w + x
+			if labels[index] < 0 or protected[index] != 0:
+				continue
+			var left_idx: int = labels[index - 1]
+			var right_idx: int = labels[index + 1]
+			var up_idx: int = labels[index - w]
+			var down_idx: int = labels[index + w]
+			if left_idx >= 0 and left_idx == right_idx and left_idx == up_idx and left_idx == down_idx and labels[index] != left_idx:
+				cleaned[index] = left_idx
+				usage[labels[index]] -= 1
+				usage[left_idx] += 1
+	labels = cleaned
+	if mode == CountMode.EXACT and occupied >= n:
+		# Missing shades are introduced as tiny connected marks, preferably
+		# inside the body and in areas close to their original luminance.
+		for missing in n:
+			if usage[missing] > 0:
+				continue
+			var best: int = -1
+			var best_cost: float = INF
+			for y in range(1, h - 1):
+				for x in range(1, w - 1):
+					var index: int = y * w + x
+					var old_index: int = labels[index]
+					if old_index < 0 or protected[index] != 0 or usage[old_index] <= 1:
+						continue
+					if labels[index - 1] < 0 or labels[index + 1] < 0 or labels[index - w] < 0 or labels[index + w] < 0:
+						continue
+					var candidate: float = absf(lightness[index] - palette[missing].get_luminance())
+					if candidate < best_cost:
+						best = index
+						best_cost = candidate
+			if best < 0:
+				# Small sprites may have no enclosed interior. Still honor
+				# EXACT when enough filled pixels exist.
+				for index in labels.size():
+					if labels[index] >= 0 and usage[labels[index]] > 1:
+						best = index
+						break
+			if best < 0:
+				break
+			usage[labels[best]] -= 1
+			labels[best] = missing
+			usage[missing] += 1
+	# All final pixels come exclusively from the palette. Alpha is untouched.
+	for y in h:
+		for x in w:
+			var chosen: int = labels[y * w + x]
+			if chosen >= 0:
+				var alpha: float = source.get_pixel(x, y).a
+				var ink: Color = palette[chosen]
+				result.set_pixel(x, y, Color(ink.r, ink.g, ink.b, alpha))
+	return result
+
+
+static func _role_index(roles: Dictionary, key: String, fallback: int, size: int) -> int:
+	return clampi(int(roles.get(key, fallback)), 0, size - 1)
