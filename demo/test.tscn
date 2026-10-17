@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://01ptspjr6ajs"]
+[gd_scene format=3 uid="uid://01ptspjr6ajs"]
 
-[ext_resource type="Script" path="res://demo/test.gd" id="1_ci45f"]
+[ext_resource type="Script" uid="uid://b3nkutmw8ial" path="res://demo/test.gd" id="1_ci45f"]
 
-[node name="MonsterGallery" type="Control"]
+[node name="MonsterGallery" type="Control" unique_id=1831654621]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
