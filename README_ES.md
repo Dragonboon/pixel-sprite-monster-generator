@@ -281,3 +281,9 @@ var final: Image = CreaturePreviewComposer.compose(
 ```
 
 Los resultados por lotes añaden `source_image` y `archetype` para permitir cambios de estilo sin repetir generación; `image` sigue siendo la imagen terminada. El caché ocupa memoria adicional por criatura: elimina `source_image` cuando no necesites recalcular el acabado. `export_pngs()` guarda solo la imagen final. El renderizador animado Node2D sigue sin reflejar estos filtros de imagen.
+
+## Teoría del color y cantidad de tonos
+
+Activa `color_theory_enabled` para elegir armonías Monocromática, Análoga, Complementaria, Complementaria dividida, Triádica, Tetrádica o Neutros + acento (o Auto, según mood y familia). El tono principal varía determinísticamente entre semillas con un salto ligado a la proporción áurea, mientras los tonos internos siguen intervalos cromáticos coherentes. La paleta asigna papeles de sombra, cuerpo, color secundario, acento, contorno y luz. `target_color_count` admite de 1 a 64: `MAXIMUM` limita los colores RGB opacos visibles del PNG a **como máximo** N; `EXACT` intenta usar **exactamente** N incluso tras el sombreado y el dithering. Si hay menos de N píxeles opacos no es posible satisfacerlo. Se buscan posiciones interiores al insertar colores de papel poco utilizados. La proporción áurea se aplica a la distribución del tono principal entre semillas, no a las proporciones anatómicas.
+
+Los controles de teoría del color de la demo recalculan la paleta a partir de imágenes base en caché, sin regenerar anatomía. Para verificar el número exacto de colores hay que examinar el PNG, no solo la longitud de la paleta. `last_palette`, `last_palette_roles` y `last_harmony` exponen información de la paleta; los lotes guardan metadatos. Con 5–8 colores suele conseguirse un acabado pixel-art clásico. Se conserva el modo anterior desactivando la teoría del color.

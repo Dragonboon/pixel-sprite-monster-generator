@@ -28,6 +28,10 @@ extends Resource
 @export_group("Palette")
 @export_range(1, 64, 1) var number_of_colors: int = 10
 @export var custom_color_palette: PixelSpriteMonsterGeneratorColorPalette
+@export var color_theory_enabled: bool = false
+@export var color_harmony: CreatureColorTheory.Harmony = CreatureColorTheory.Harmony.AUTO
+@export var color_count_mode: CreatureColorTheory.CountMode = CreatureColorTheory.CountMode.MAXIMUM
+@export_range(1, 64, 1) var target_color_count: int = 8
 @export var color_saturation: float = 0.5
 @export var color_value: float = 0.95
 @export var main_noise: FastNoiseLite
@@ -69,6 +73,10 @@ func apply_to(generator: PixelSpriteMonsterGenerator) -> void:
 	generator.silhouette_mood = silhouette_mood
 	generator.number_of_colors = number_of_colors
 	generator.custom_color_palette = custom_color_palette
+	generator.color_theory_enabled = color_theory_enabled
+	generator.color_harmony = color_harmony
+	generator.color_count_mode = color_count_mode
+	generator.target_color_count = target_color_count
 	generator.color_saturation = color_saturation
 	generator.color_value = color_value
 	if main_noise != null:

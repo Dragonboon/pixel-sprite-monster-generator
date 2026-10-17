@@ -285,3 +285,9 @@ var result: Image = CreaturePreviewComposer.compose(
 ```
 
 The batch API now returns an extra `source_image` and `archetype` for restyling; `image` is still the final version. `source_image` increases retained memory per creature, trading memory for fast preview changes. `export_pngs()` exports `image` only, not these cached intermediates. For runtime encounter memory efficiency, release `source_image` if restyling is unnecessary. The animated Node2D cell renderer does not show image-only finishing.
+
+## Theory-guided color and palette limits
+
+Enable `color_theory_enabled` to use one of eight coherent harmonies (Auto, Monochromatic, Analogous, Complementary, Split Complementary, Triadic, Tetradic, Neutral + Accent). The base hue varies reproducibly across seeds using a golden-ratio step; related hues within one monster respect the selected harmony. The role palette reserves positions for shadow, body, secondary, accent, outline and highlights. `target_color_count` is 1–64; `MAXIMUM` uses **at most** N distinct opaque RGB colors in the finished PNG, while `EXACT` attempts **exactly** N, including after style filters and dithering. Exact N is impossible if the image has fewer than N opaque pixels; the algorithm prioritizes filled interior pixels for missing roles. These are color counts, not an application of the golden ratio to anatomical proportions. Existing coloring remains available by disabling color theory; this is an opt-in change on existing scenes.
+
+The demo's Color Theory controls reapply harmonies and limits to cached native images without rerunning morphology. Exact count should be checked on the resulting PNG rather than the palette length. Generated palettes and roles are exposed through `last_palette`, `last_palette_roles` and `last_harmony`; batch results include palette metadata. Small N strongly constrains outlines/highlights; try 5–8 for classic pixel art.

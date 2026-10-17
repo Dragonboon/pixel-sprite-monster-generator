@@ -25,6 +25,10 @@ var quality_slider: HSlider
 var shade_slider: HSlider
 var detail_slider: HSlider
 var details_checkbox: CheckBox
+var harmony_enabled: CheckBox
+var harmony_select: OptionButton
+var color_count_select: OptionButton
+var color_count_spinner: SpinBox
 var structure_checkbox: CheckBox
 var view_selector: OptionButton
 var active_style: int = 0
@@ -141,6 +145,26 @@ func _ready() -> void:
 	shade_slider.value = 0.65
 	shade_slider.custom_minimum_size.x = 105
 	art_controls.add_child(shade_slider)
+	var colors_controls := HBoxContainer.new()
+	layout.add_child(colors_controls)
+	harmony_enabled = CheckBox.new()
+	harmony_enabled.text = "Color theory"
+	harmony_enabled.button_pressed = true
+	colors_controls.add_child(harmony_enabled)
+	harmony_select = OptionButton.new()
+	for harmony_name in ["Auto", "Monochromatic", "Analogous", "Complementary", "Split complementary", "Triadic", "Tetradic", "Neutral + accent"]:
+		harmony_select.add_item(harmony_name)
+	colors_controls.add_child(harmony_select)
+	color_count_select = OptionButton.new()
+	color_count_select.add_item("Maximum")
+	color_count_select.add_item("Exact")
+	colors_controls.add_child(color_count_select)
+	color_count_spinner = SpinBox.new()
+	color_count_spinner.min_value = 1
+	color_count_spinner.max_value = 64
+	color_count_spinner.value = 8
+	color_count_spinner.rounded = true
+	colors_controls.add_child(color_count_spinner)
 	details_checkbox = CheckBox.new()
 	details_checkbox.text = "Internal details"
 	details_checkbox.button_pressed = true
@@ -164,6 +188,10 @@ func _ready() -> void:
 	compare_views.toggled.connect(func(_v: bool) -> void: _render_gallery())
 	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	shade_slider.drag_ended.connect(func(_v: bool) -> void: _refresh_finish())
+	harmony_enabled.toggled.connect(func(_v: bool) -> void: _refresh_palette())
+	harmony_select.item_selected.connect(func(_v: int) -> void: _refresh_palette())
+	color_count_select.item_selected.connect(func(_v: int) -> void: _refresh_palette())
+	color_count_spinner.value_changed.connect(func(_v: float) -> void: _refresh_palette())
 	details_checkbox.toggled.connect(func(_v: bool) -> void: _refresh_finish())
 	structure_checkbox.toggled.connect(func(_v: bool) -> void: _regenerate())
 	detail_slider.drag_ended.connect(func(_v: bool) -> void: _refresh_finish())
@@ -271,6 +299,18 @@ func _refresh_finish() -> void:
 			style_selector.selected, view_selector.selected, shade_slider.value,
 			0.18, 0.0, int(item["selected_seed"])
 		)
+		if harmony_enabled.button_pressed:
+			var palette: PackedColorArray = item.get("palette", PackedColorArray())
+			if palette.is_empty():
+				palette = CreatureColorTheory.build(
+				int(item["selected_seed"]), int(color_count_spinner.value),
+				harmony_select.selected, mood_selector.selected,
+				int(item.get("archetype", 0))
+			)["colors"]
+			item["palette"] = palette
+			item["harmony"] = harmony_select.selected
+			item["color_count_mode"] = color_count_select.selected
+			item["image"] = CreatureColorTheory.quantize(item["image"], palette, color_count_select.selected)
 		updated += 1
 		if updated % 4 == 0:
 			await get_tree().process_frame
@@ -281,6 +321,13 @@ func _refresh_finish() -> void:
 		rendered_images.append(item["image"])
 	_render_gallery()
 	_show_status("Updated finish on %d cached sprites (anatomy unchanged)." % updated, false)
+
+
+## Palette-only changes keep all silhouettes and selected seeds intact.
+func _refresh_palette() -> void:
+	for item in current_items:
+		item["palette"] = PackedColorArray()
+	_refresh_finish()
 
 
 func _benchmark() -> void:
@@ -334,6 +381,10 @@ func _build_preset(index: int) -> CreatureGenerationPreset:
 		preset.quality_max_attempts = 8
 		preset.refined_anatomy = true
 	preset.structural_variants = structure_checkbox.button_pressed
+	preset.color_theory_enabled = harmony_enabled.button_pressed
+	preset.color_harmony = harmony_select.selected
+	preset.color_count_mode = color_count_select.selected
+	preset.target_color_count = int(color_count_spinner.value)
 	preset.internal_details_enabled = details_checkbox.button_pressed
 	preset.internal_detail_strength = detail_slider.value
 	if family_selector.selected > 0:

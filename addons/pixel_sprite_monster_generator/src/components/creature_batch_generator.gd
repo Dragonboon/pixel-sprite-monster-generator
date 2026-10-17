@@ -92,7 +92,11 @@ static func _append_range(items: Array[Dictionary], worker: PixelSpriteMonsterGe
 			"structure": worker.last_structure.duplicate(true),
 			"image": image,
 			"source_image": source_image,
-			"archetype": worker.creature_archetype
+			"archetype": worker.creature_archetype,
+			"palette": worker.last_palette,
+			"palette_roles": worker.last_palette_roles.duplicate(true),
+			"harmony": worker.last_harmony,
+			"color_count_mode": worker.color_count_mode
 		})
 
 
@@ -155,7 +159,11 @@ static func export_pngs(items: Array[Dictionary], directory: String, prefix: Str
 			"anatomy": item["anatomy"],
 			"anatomy_metrics": item["anatomy_metrics"],
 			"traits": item.get("traits", {}),
-			"structure": item.get("structure", {})
+			"structure": item.get("structure", {}),
+			"palette": Array(item.get("palette", PackedColorArray())).map(func(color: Color) -> String: return color.to_html(false)),
+			"palette_roles": item.get("palette_roles", {}),
+			"harmony": item.get("harmony", 0),
+			"color_count_mode": item.get("color_count_mode", 0)
 		})
 	var manifest: Dictionary = {
 		"schema_version": 1,

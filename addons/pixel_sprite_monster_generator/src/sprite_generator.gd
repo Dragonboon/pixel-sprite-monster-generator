@@ -84,6 +84,16 @@ var last_anatomy: Dictionary = {}
 			update_group_drawer()
 @export_category("Color scheme")
 @export var custom_color_palette: PixelSpriteMonsterGeneratorColorPalette
+@export_group("Harmonious Palette")
+## Off keeps the classic generated and custom color-palette behavior.
+@export var color_theory_enabled: bool = false
+@export var color_harmony: CreatureColorTheory.Harmony = CreatureColorTheory.Harmony.AUTO
+@export var color_count_mode: CreatureColorTheory.CountMode = CreatureColorTheory.CountMode.MAXIMUM
+@export_range(1, 64, 1) var target_color_count: int = 8
+## Generated palette, including shadow/body/accent/highlight roles.
+var last_palette: PackedColorArray = PackedColorArray()
+var last_palette_roles: Dictionary = {}
+var last_harmony: int = 0
 ## The method to generate the colors, rgb is more random and hsv keeps a consistency on the color palette generated
 @export var color_generation_method: ColorSchemeGenerator.ColorGenerationMethod = ColorSchemeGenerator.ColorGenerationMethod.GoldenRatioHSV
 @export var color_saturation: float = 0.5
@@ -150,6 +160,8 @@ func draw_sprite() -> void:
 	last_anatomy_metrics = {}
 	last_traits = {}
 	last_structure = {}
+	last_palette = PackedColorArray()
+	last_palette_roles = {}
 	last_quality_attempts = 0
 	# Candidate masks are evaluated without touching the game's global RNG.
 	var first_seed: int = last_seed
@@ -250,6 +262,14 @@ func draw_sprite() -> void:
 		elif _eye_color_generation_is_random_rgb():
 			eye_scheme = color_scheme_generator.generate_random_rgb_colors(num_of_colors)
 			
+	if color_theory_enabled:
+		var palette_result: Dictionary = CreatureColorTheory.build(
+			last_seed, target_color_count, color_harmony,
+			silhouette_mood, creature_archetype, color_saturation, color_value
+		)
+		last_palette = palette_result["colors"]
+		last_palette_roles = palette_result["roles"]
+		last_harmony = int(palette_result["harmony"])
 	all_color_groups = color_filler.fill_colors(map, scheme, eye_scheme, num_of_colors, outlined)
 	
 	update_group_drawer()
@@ -343,7 +363,17 @@ func finish_image(source: Image) -> Image:
 		internal_details_enabled, internal_detail_strength,
 		visual_style, view_mode, shading_strength, dithering_strength,
 		glitch_strength, last_seed
+	) if not color_theory_enabled else _finish_harmonious(source)
+
+
+func _finish_harmonious(source: Image) -> Image:
+	var finished: Image = CreaturePreviewComposer.compose(
+		source, creature_archetype, last_traits if refined_anatomy else {},
+		internal_details_enabled, internal_detail_strength,
+		visual_style, view_mode, shading_strength, dithering_strength,
+		glitch_strength, last_seed
 	)
+	return CreatureColorTheory.quantize(finished, last_palette, color_count_mode)
 
 
 ## Use user:// in exported games. Parent directory must already exist.
