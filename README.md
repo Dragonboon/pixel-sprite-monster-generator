@@ -2,7 +2,7 @@
 
 Generate deterministic pixel monsters in **Godot 4.7**, preview them in the laboratory, and export PNG sprites. No external runtime dependencies.
 
-![Plugin icon](../icon.svg)
+![Plugin icon](icon.svg)
 
 **[Español](README_ES.md)** · **[Developer API](docs/API.md)** · **[Historical feature notes](docs/HISTORY.md)**
 
