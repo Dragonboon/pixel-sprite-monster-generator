@@ -240,3 +240,21 @@ Con el filtro de calidad activado, la puntuación geométrica penaliza adicional
 Las familias **Insectoid, Quadruped, Golem y Spirit** construyen primero masas corporales conectadas cuando se activa **Refined Anatomy** (activado por defecto en criaturas configuradas nuevas). El insectoide diferencia cabeza, tórax, abdomen y seis patas articuladas; el cuadrúpedo tiene tronco, cuello, cabeza y cuatro patas; el gólem refuerza hombros, puños y pies; y el espíritu dispone de volúmenes flotantes con estelas. El ruido celular modula los contornos para conservar la aleatoriedad. Original, Biped, Slime y Winged mantienen sus rutas anteriores.
 
 La opción **Compare legacy anatomy** de la galería permite comparar hasta doce criaturas con la versión antigua, ambas con la misma semilla seleccionada. La comparación consume generación adicional y está desactivada por defecto. **Refined Anatomy = false** recupera las reglas anteriores de estas cuatro familias. Si hay selección de calidad, la semilla elegida también puede variar al cambiar la puntuación. Para reproducir exactamente un PNG guarda semilla, preset y versión. Las mejoras se deben comprobar visualmente en Godot antes de considerar los recursos definitivos.
+
+## Rasgos internos derivados de la semilla
+
+Las familias Insectoid, Quadruped, Golem y Spirit incorporan ahora una segunda fase de **detallado interior** después del relleno de color y antes de los filtros pixel-art. Cada semilla seleccionada deriva su propio perfil `CreatureTraitProfile`, con patrón, distribución de ojos, ornamento, acento cromático y número/posición de marcas, sin alterar la silueta ni el RNG global. Los insectoides adquieren segmentos y placas; los cuadrúpedos, marcas de pelaje/lomo; los gólems, grietas, juntas y runas; y los espíritus, máscara y núcleo luminoso con estelas.
+
+Los parámetros `internal_details_enabled` (activado por defecto) y `internal_detail_strength` (0–1) controlan el acabado. Desactívalo para recuperar el resultado anterior sin detalles en las cuatro familias. Los trazos se limitan a **píxeles interiores opacos**, respetando la resolución y la transparencia. `last_traits`, los resultados por lotes y el manifiesto JSON guardan la identidad procedural. La demo muestra un interruptor, un control de intensidad y el patrón/acento seleccionado en cada tarjeta.
+
+```gdscript
+monstruo.internal_details_enabled = true
+monstruo.internal_detail_strength = 0.85
+monstruo.manual_seed = 4200
+monstruo.randomize_seed = false
+monstruo.draw_sprite()
+print(monstruo.last_traits)
+var imagen: Image = monstruo.get_image()
+```
+
+**Compatibilidad:** el PNG de las cuatro familias refinadas cambia al incluir los detalles por defecto. Desactiva esta opción para repetir las exportaciones anteriores. El renderizador animado original sigue sin incorporar esta capa: para mostrarla dentro del juego utiliza la imagen obtenida con `get_image()` como textura con filtrado nearest-neighbor.

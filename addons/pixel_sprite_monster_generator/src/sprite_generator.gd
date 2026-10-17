@@ -24,6 +24,12 @@ class_name PixelSpriteMonsterGenerator extends Node2D
 @export var anatomy_profile: CreatureAnatomyProfile
 ## Keep legacy generation available for fair same-seed visual comparisons.
 @export var refined_anatomy: bool = true
+@export_category("Internal Details")
+## Applies to the four anatomy-refined families only. Turn off for legacy PNGs.
+@export var internal_details_enabled: bool = true
+@export_range(0.0, 1.0, 0.05) var internal_detail_strength: float = 0.8
+## Traits describe the chosen seed; never a second untracked random draw.
+var last_traits: Dictionary = {}
 var last_anatomy: Dictionary = {}
 @export_category("Art Direction")
 @export var silhouette_mood: CreatureMood.Mood = CreatureMood.Mood.NORMAL
@@ -139,6 +145,7 @@ func draw_sprite() -> void:
 	# Reset metadata before every candidate; never leak a previous family into a new result.
 	last_anatomy = {}
 	last_anatomy_metrics = {}
+	last_traits = {}
 	last_quality_attempts = 0
 	# Candidate masks are evaluated without touching the game's global RNG.
 	var first_seed: int = last_seed
@@ -204,6 +211,8 @@ func draw_sprite() -> void:
 	last_quality_score = best_score
 	last_anatomy = best_anatomy
 	last_anatomy_metrics = best_anatomy_metrics
+	if internal_details_enabled and refined_anatomy and CreatureAnatomyRefiner.supports(creature_archetype) and internal_detail_strength > 0.0:
+		last_traits = CreatureTraitProfile.derive(creature_archetype, best_seed, silhouette_mood)
 	rng.seed = best_seed
 	rng.state = best_state
 	color_scheme_generator = ColorSchemeGenerator.new(rng)
@@ -304,6 +313,8 @@ func get_image() -> Image:
 			if drawer.is_eye and center.distance_to(cell.position) < eye_radius:
 				color = color.darkened(0.85)
 			result.set_pixelv(point, color)
+	if not last_traits.is_empty() and internal_details_enabled and refined_anatomy:
+		result = CreatureInternalDetails.render(result, creature_archetype, last_traits, internal_detail_strength)
 	if visual_style != CreaturePixelEffects.Style.CLASSIC or view_mode != CreaturePixelEffects.View.FRONT or shading_strength > 0.0 or dithering_strength > 0.0 or glitch_strength > 0.0:
 		return CreaturePixelEffects.process(result, visual_style, view_mode, shading_strength, dithering_strength, glitch_strength, last_seed)
 	return result

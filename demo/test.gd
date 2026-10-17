@@ -23,6 +23,8 @@ var mood_selector: OptionButton
 var style_selector: OptionButton
 var quality_slider: HSlider
 var shade_slider: HSlider
+var detail_slider: HSlider
+var details_checkbox: CheckBox
 var view_selector: OptionButton
 var active_style: int = 0
 var anatomy_profile: CreatureAnatomyProfile
@@ -135,6 +137,18 @@ func _ready() -> void:
 	shade_slider.value = 0.65
 	shade_slider.custom_minimum_size.x = 105
 	art_controls.add_child(shade_slider)
+	details_checkbox = CheckBox.new()
+	details_checkbox.text = "Internal details"
+	details_checkbox.button_pressed = true
+	art_controls.add_child(details_checkbox)
+	detail_slider = HSlider.new()
+	detail_slider.min_value = 0.0
+	detail_slider.max_value = 1.0
+	detail_slider.step = 0.1
+	detail_slider.value = 0.8
+	detail_slider.custom_minimum_size.x = 90
+	detail_slider.tooltip_text = "Interior pattern contrast"
+	art_controls.add_child(detail_slider)
 	mood_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	style_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	view_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
@@ -142,6 +156,8 @@ func _ready() -> void:
 	compare_views.toggled.connect(func(_v: bool) -> void: _render_gallery())
 	quality_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	shade_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
+	details_checkbox.toggled.connect(func(_v: bool) -> void: _regenerate())
+	detail_slider.drag_ended.connect(func(_v: bool) -> void: _regenerate())
 	family_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	preset_selector.item_selected.connect(func(_v: int) -> void: _regenerate())
 	count_input.value_changed.connect(func(_v: float) -> void: _regenerate())
@@ -264,6 +280,8 @@ func _build_preset(index: int) -> CreatureGenerationPreset:
 		preset.quality_min_score = quality_slider.value
 		preset.quality_max_attempts = 8
 		preset.refined_anatomy = true
+	preset.internal_details_enabled = details_checkbox.button_pressed
+	preset.internal_detail_strength = detail_slider.value
 	if family_selector.selected > 0:
 		preset.creature_archetype = family_selector.selected - 1
 	return preset
@@ -311,6 +329,7 @@ func _render_gallery() -> void:
 			var old_preset: CreatureGenerationPreset = _build_preset(index)
 			if CreatureAnatomyRefiner.supports(old_preset.creature_archetype):
 				old_preset.refined_anatomy = false
+				old_preset.internal_details_enabled = false
 				old_preset.quality_enabled = false
 				var old_items: Array[Dictionary] = CreatureBatchGenerator.generate(old_preset, self, 1, int(item["selected_seed"]))
 				if not old_items.is_empty():
@@ -325,7 +344,8 @@ func _render_gallery() -> void:
 					caption.text = "Above: refined  /  Below: legacy (same seed)"
 					contents.add_child(caption)
 		var metric := Label.new()
-		metric.text = "Anatomy %.0f · %.1f ms%s" % [float(item["anatomy_metrics"].get("score", 0.0)), float(item.get("elapsed_ms", 0.0)), "" if bool(item["quality_accepted"]) else " · best effort"]
+		var traits: Dictionary = item.get("traits", {})
+		metric.text = "Anatomy %.0f · %s · %.1f ms%s" % [float(item["anatomy_metrics"].get("score", 0.0)), ("Pattern %d / Accent %d" % [int(traits.get("pattern", 0)) + 1, int(traits.get("accent", 0)) + 1]) if not traits.is_empty() else "No details", float(item.get("elapsed_ms", 0.0)), "" if bool(item["quality_accepted"]) else " · best effort"]
 		contents.add_child(metric)
 		gallery.add_child(card)
 

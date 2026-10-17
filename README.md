@@ -244,3 +244,21 @@ When quality filtering is enabled, geometric scoring now additionally penalizes 
 **Insectoid, Quadruped, Golem, and Spirit** now have connected anatomy-first silhouettes when **Refined Anatomy** is enabled (the default for newly configured creatures). Instead of decorating an unrestricted noisy mass, these families first build recognizable linked volumes: insect thorax/abdomen with six articulated legs, quadruped body/neck/head and four legs, heavy golem shoulders/feet, or a floating spirit with trailing wisps. Existing cellular noise still perturbs the outlines, so sprites remain seed-based rather than hand-authored clones. The Original, Biped, Slime and Winged paths are unaffected by this refiner.
 
 The **Compare legacy anatomy** gallery checkbox displays up to twelve selected sprites with the historical anatomy underneath for the same selected seed. Comparison is opt-in because it doubles image generation costs. **Refined Anatomy = false** restores the previous silhouettes for all four refined families; with the quality gate enabled the seed selected by the search may still change because the new shape has a different score. Keep the full preset/settings with saved seed data for pixel-exact replay. This iteration makes no claims about genuine 3D anatomy or artist-approved quality; check the visible contours in Godot before exporting final assets.
+
+## Seed-derived internal traits
+
+Insectoid, Quadruped, Golem and Spirit now have a lightweight second stage of **internal pixel detailing** that runs after palette fill and before pixel-art effects. Each selected seed derives an independent `CreatureTraitProfile` dictionary (pattern, eye layout, ornament, accent, mark count and placement); this changes visible markings without rerolling the silhouette or changing game-wide RNG. Insectoids gain carapace segmentation, plates and eyes; quadrupeds have flank patterns and dorsal details; golems acquire cracks, seams and runes; spirits have luminous masks, inner cores and drifting markings.
+
+The optional settings `internal_details_enabled` (default: true) and `internal_detail_strength` (0–1) control the finish; `false` restores the immediately preceding silhouette-only result for the four refined families. Details are clipped to opaque **interior** cells, preserving both native pixel resolution and alpha. `last_traits` and batch result `traits` metadata record the generated identity, and JSON manifests include it for reproducibility. The demo exposes a details checkbox/strength slider and reports the selected pattern/accent on each card. Other archetypes and legacy anatomy paths are unaffected.
+
+```gdscript
+monster.internal_details_enabled = true
+monster.internal_detail_strength = 0.85
+monster.manual_seed = 4200
+monster.randomize_seed = false
+monster.draw_sprite()
+print(monster.last_traits)
+var image: Image = monster.get_image()
+```
+
+**Compatibility:** For these four refined archetypes, default PNG pixels now include the new markings. To reproduce earlier PNG exports, disable internal details. In-game node animation is still rendered by the original live group drawer; internal markings apply to `get_image()` and PNG exports, so display the generated image as a nearest-filtered texture when using the finish.

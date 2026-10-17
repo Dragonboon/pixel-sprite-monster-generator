@@ -268,6 +268,53 @@ func run() -> void:
 	assert(refined_pixels != legacy_pixels)
 	generator.refined_anatomy = true
 	generator.anatomy_profile = null
+	# Internal trait profiles remain deterministic, vary by seed and do not
+	# affect silhouette geometry, alpha or the global random stream.
+	var traits_per_seed: Dictionary = {}
+	var detail_base := Image.create(48, 48, false, Image.FORMAT_RGBA8)
+	detail_base.fill(Color.TRANSPARENT)
+	for dy in range(5, 43):
+		for dx in range(5, 43):
+			detail_base.set_pixel(dx, dy, Color(0.47, 0.55, 0.65, 1.0))
+	for family in [CreatureMorphology.Archetype.INSECTOID, CreatureMorphology.Archetype.GOLEM, CreatureMorphology.Archetype.SPIRIT, CreatureMorphology.Archetype.QUADRUPED]:
+		var family_outputs: Dictionary = {}
+		for trait_seed in [42, 1042, 4200, 9913]:
+			var traits: Dictionary = CreatureTraitProfile.derive(family, trait_seed, CreatureMood.Mood.NORMAL)
+			assert(traits == CreatureTraitProfile.derive(family, trait_seed, CreatureMood.Mood.NORMAL))
+			var decorated: Image = CreatureInternalDetails.render(detail_base, family, traits, 0.9)
+			assert(decorated.get_size() == detail_base.get_size())
+			var changed: int = 0
+			for yy in decorated.get_height():
+				for xx in decorated.get_width():
+					assert(is_equal_approx(decorated.get_pixel(xx, yy).a, detail_base.get_pixel(xx, yy).a))
+					if decorated.get_pixel(xx, yy) != detail_base.get_pixel(xx, yy):
+						changed += 1
+			assert(changed >= 3)
+			assert(decorated.get_data() == CreatureInternalDetails.render(detail_base, family, traits, 0.9).get_data())
+			family_outputs[hash(decorated.get_data())] = true
+		assert(family_outputs.size() >= 2, "Each archetype requires visible seeded detail variety")
+		traits_per_seed[family] = family_outputs.size()
+	assert(CreatureInternalDetails.render(detail_base, CreatureMorphology.Archetype.ORIGINAL, {}, 1.0).get_data() == detail_base.get_data())
+	# An existing sprite remains reproducible and can opt out of details.
+	generator.anatomy_profile = CreatureAnatomyProfile.new()
+	generator.creature_archetype = CreatureMorphology.Archetype.GOLEM
+	generator.refined_anatomy = true
+	generator.internal_details_enabled = true
+	generator.internal_detail_strength = 0.9
+	generator.manual_seed = 1042
+	generator.quality_enabled = false
+	generator.draw_sprite()
+	var detailed_pixels: PackedByteArray = generator.get_image().get_data()
+	var stored_traits: Dictionary = generator.last_traits.duplicate(true)
+	generator.draw_sprite()
+	assert(generator.get_image().get_data() == detailed_pixels)
+	assert(generator.last_traits == stored_traits)
+	generator.internal_details_enabled = false
+	generator.draw_sprite()
+	assert(generator.last_traits.is_empty())
+	assert(generator.get_image().get_data() != detailed_pixels)
+	generator.internal_details_enabled = true
+	generator.anatomy_profile = null
 	# Isolated batch generation does not mutate or delete the live preview.
 	var authoring := CreatureGenerationPreset.new()
 	authoring.quality_max_attempts = 2

@@ -18,6 +18,8 @@ extends Resource
 @export var creature_archetype: CreatureMorphology.Archetype = CreatureMorphology.Archetype.BIPED
 @export var anatomy_profile: CreatureAnatomyProfile
 @export var refined_anatomy: bool = true
+@export var internal_details_enabled: bool = true
+@export_range(0.0, 1.0, 0.05) var internal_detail_strength: float = 0.8
 @export_range(0.0, 1.0, 0.05) var anatomy_strength: float = 0.9
 @export var facial_eyes: bool = true
 @export var silhouette_mood: CreatureMood.Mood = CreatureMood.Mood.NORMAL
@@ -58,6 +60,8 @@ func apply_to(generator: PixelSpriteMonsterGenerator) -> void:
 	generator.creature_archetype = creature_archetype
 	generator.anatomy_profile = anatomy_profile
 	generator.refined_anatomy = refined_anatomy
+	generator.internal_details_enabled = internal_details_enabled
+	generator.internal_detail_strength = internal_detail_strength
 	generator.anatomy_strength = anatomy_strength
 	generator.facial_eyes = facial_eyes
 	generator.silhouette_mood = silhouette_mood
