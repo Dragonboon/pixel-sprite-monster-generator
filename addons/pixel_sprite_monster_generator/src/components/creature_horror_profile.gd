@@ -132,7 +132,7 @@ static func apply(source: Array[Variant], archetype: int, traits: Dictionary) ->
 	elif subtype == 2:
 		# A small negative space in the chest, entirely surrounded by a torso.
 		for dy in range(-1, 2):
-			_set(result, cx, shoulder_y + 5 + dy, false)
+			_write_mask_cell(result, cx, shoulder_y + 5 + dy, false)
 
 	# Low-resolution facial emptiness: enclosed holes stay distinct from
 	# external transparency, without random scatter or photorealism.
@@ -184,7 +184,7 @@ static func palette(seed_value: int, requested: int) -> Dictionary:
 	}
 
 
-static func _set(map: Array[Variant], x: int, y: int, value: bool) -> void:
+static func _write_mask_cell(map: Array[Variant], x: int, y: int, value: bool) -> void:
 	if x >= 0 and x < map.size() and y >= 0 and y < map[0].size():
 		map[x][y] = value
 
@@ -207,4 +207,4 @@ static func _line(map: Array[Variant], x0: int, y0: int, x1: int, y1: int, thick
 		var y: int = roundi(lerpf(float(y0), float(y1), fraction))
 		for dx in range(-radius, radius + 1):
 			for dy in range(-radius, radius + 1):
-				_set(map, x + dx, y + dy, true)
+				_write_mask_cell(map, x + dx, y + dy, true)
