@@ -4,6 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 
 parser = argparse.ArgumentParser()
@@ -11,7 +12,32 @@ parser.add_argument("--godot", default=os.environ.get("GODOT_BIN", "godot"))
 parser.add_argument("--render", action="store_true", help="Also test real rendering/PNG export; requires a display")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
-godot = str(Path(args.godot).resolve()) if Path(args.godot).is_file() else args.godot
+def discover_godot():
+    """Use GODOT_BIN, PATH, common local/Windows installs, without a required CLI flag."""
+    explicit = args.godot
+    candidates = [explicit, "godot", "godot4", "godot-mono", "Godot"]
+    if os.name == "nt":
+        roots = [root, root / "tools", Path.home() / "Downloads", Path.home() / "Desktop"]
+        for candidate_root in roots:
+            if candidate_root.exists():
+                candidates.extend(str(p) for p in candidate_root.glob("Godot_v4.7*_win64*.exe"))
+        candidates.extend([
+            r"C:\Program Files\Godot\Godot.exe",
+            r"C:\Program Files (x86)\Godot\Godot.exe",
+        ])
+    for candidate in candidates:
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+        if Path(candidate).is_file():
+            return str(Path(candidate).resolve())
+    raise SystemExit(
+        "Godot 4.7 not found. Run tests directly in Godot via "
+        "tests/run_from_editor.gd or add Godot to PATH; "
+        "GODOT_BIN / --godot remain optional overrides."
+    )
+
+godot = discover_godot()
 
 def run(arguments, marker=None):
     result = subprocess.run([godot, "--path", str(root), "--audio-driver", "Dummy", *arguments],
