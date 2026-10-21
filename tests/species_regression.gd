@@ -28,5 +28,24 @@ func run() -> void:
 	assert(randi() == expected, "Species generation must not touch global RNG")
 	var tiny := CreatureSpeciesGenerator.generate(13, Vector2i(3, 2))
 	assert(tiny["image"].get_size() == Vector2i(26, 26), "Sizes must be clamped")
+
+	# V2 modules must replay, mutate deterministically and preserve explicit locks.
+	var options: Dictionary = {"form": CreatureSpeciesGenerator.Form.BIPED,
+		"head": 1, "tail": 2, "back": 1, "moods": {"epic": 1.0, "creepy": 0.5}}
+	var dna: Dictionary = CreatureSpeciesDNA.sample(500, options)
+	assert(int(dna["head"]) == 1 and int(dna["tail"]) == 2 and int(dna["back"]) == 1)
+	var modular: Dictionary = CreatureSpeciesGenerator.render(dna)
+	assert(modular["image"].get_data() == CreatureSpeciesGenerator.render(dna)["image"].get_data())
+	var locked: Dictionary = {"form": true, "head": true, "tail": true}
+	var mutation: Dictionary = CreatureSpeciesDNA.mutate(dna, 900, 1.0, locked)
+	assert(mutation["form"] == dna["form"] and mutation["head"] == dna["head"] and mutation["tail"] == dna["tail"])
+	assert(mutation == CreatureSpeciesDNA.mutate(dna, 900, 1.0, locked))
+	var another: Dictionary = CreatureSpeciesDNA.sample(501, options)
+	assert(another != dna, "Different seeds must sample different genomes")
+	var changed: Dictionary = dna.duplicate(true)
+	changed["head"] = 5
+	assert(CreatureSpeciesGenerator.render(changed)["image"].get_data() != modular["image"].get_data(),
+		"Changing head module must alter rendered pixels")
+	assert(CreatureSpeciesDNA.sample(500, options) == dna)
 	print("PASS: procedural species")
 	quit()
