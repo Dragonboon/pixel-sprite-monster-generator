@@ -231,6 +231,36 @@ static func _mark(image: Image, mask: Image, x: int, y: int, color: Color) -> vo
 ## Semantic modules attach around the head, torso and tail sockets.
 ## Kept separate from schema v1 to preserve all existing visual snapshots.
 static func _apply_modules(mask: Image, genome: Dictionary, form: int, w: int, h: int) -> void:
+	var torso: int = int(genome.get("torso", 0))
+	var abdomen: int = int(genome.get("abdomen", 0))
+	var stance: int = int(genome.get("stance", 0))
+	var wing_style: int = int(genome.get("wing_style", 0))
+	match torso:
+		1:
+			_ellipse(mask, 24, 33, 14, 9, Color.WHITE, w, h)
+		2:
+			_ellipse(mask, 24, 26, 15, 13, Color.WHITE, w, h)
+		3:
+			_line(mask, 24, 13, 12, 34, 8, w, h)
+			_line(mask, 24, 13, 36, 34, 8, w, h)
+		4:
+			_ellipse(mask, 24, 27, 7, 15, Color.WHITE, w, h)
+	match abdomen:
+		1:
+			for segment in 3:
+				_ellipse(mask, 24, 28 + segment * 4, 9 - segment, 3, Color.WHITE, w, h)
+		2:
+			_ellipse(mask, 24, 31, 7, 5, Color.WHITE, w, h)
+		3:
+			_ellipse(mask, 24, 34, 14, 9, Color.WHITE, w, h)
+	if stance == 1:
+		_line(mask, 15, 34, 8, 42, 5, w, h)
+		_line(mask, 33, 34, 40, 42, 5, w, h)
+	elif stance == 2:
+		_line(mask, 16, 30, 4, 36, 5, w, h)
+		_line(mask, 32, 30, 44, 36, 5, w, h)
+	elif stance == 3:
+		_line(mask, 26, 27, 36, 40, 5, w, h)
 	var head: int = int(genome.get("head", 0))
 	var limbs: int = int(genome.get("limbs", 0))
 	var back: int = int(genome.get("back", 0))
@@ -260,6 +290,15 @@ static func _apply_modules(mask: Image, genome: Dictionary, form: int, w: int, h
 		5: # Tall angular crown.
 			for side in [-1, 1]:
 				_line(mask, cx + side * 4, cy, cx + side * 7, cy - head_size - 5, 4, w, h)
+	if back == 2 and wing_style == 1:
+		for side in [-1, 1]:
+			_ellipse(mask, 24 + side * 13, 19, 8, 12, Color.WHITE, w, h)
+	elif back == 2 and wing_style == 2:
+		for side in [-1, 1]:
+			_ellipse(mask, 24 + side * 15, 22, 10, 8, Color.WHITE, w, h)
+	elif back == 2 and wing_style == 3:
+		for side in [-1, 1]:
+			_ellipse(mask, 24 + side * 17, 25, 12, 5, Color.WHITE, w, h)
 	if back == 1: # Defensive shell.
 		_ellipse(mask, 24, 26, 14 + epic * 3, 9, Color.WHITE, w, h)
 	elif back == 2: # Paired pointed wings.
