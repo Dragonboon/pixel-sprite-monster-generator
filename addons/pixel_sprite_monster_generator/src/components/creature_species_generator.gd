@@ -126,6 +126,8 @@ static func render(genome: Dictionary, size: Vector2i = Vector2i(48, 48)) -> Dic
 			_line(mask, 16, 21, 5, 30, 7, w, h)
 			_line(mask, 32, 21, 43, 30, 7, w, h)
 			_ellipse(mask, 24, 24, 13 * bw, 13 * bh, Color.WHITE, w, h)
+	if int(genome.get("schema_version", 1)) >= 2:
+		_apply_modules(mask, genome, form, w, h)
 	# Paint interior in four semantic tones, preserving a dark 1px contour.
 	for y in range(1, h + 1):
 		for x in range(1, w + 1):
@@ -214,3 +216,77 @@ static func _mark(image: Image, mask: Image, x: int, y: int, color: Color) -> vo
 		if mask.get_pixelv(Vector2i(x, y) + delta).a < 0.5:
 			return
 	image.set_pixel(x, y, color)
+
+## Semantic modules attach around the head, torso and tail sockets.
+## Kept separate from schema v1 to preserve all existing visual snapshots.
+static func _apply_modules(mask: Image, genome: Dictionary, form: int, w: int, h: int) -> void:
+	var head: int = int(genome.get("head", 0))
+	var limbs: int = int(genome.get("limbs", 0))
+	var back: int = int(genome.get("back", 0))
+	var tail: int = int(genome.get("tail", 0))
+	var subtype: int = int(genome.get("subtype", 0))
+	var moods: Dictionary = genome.get("moods", {})
+	var epic: float = float(moods.get("epic", 0.0))
+	var organic: float = float(moods.get("organic", 0.0))
+	var cx: float = 34.0 if form in [Form.QUADRUPED, Form.SERPENT] else 24.0
+	var cy: float = 14.0 if form in [Form.BIPED, Form.BIPED_TAIL, Form.SERPENT, Form.WINGED_PAIR, Form.WINGED_DOUBLE] else 21.0
+	if form == Form.FISH:
+		cx = 32.0
+		cy = 23.0
+	var head_size: float = 6.2 * float(genome.get("head_scale", 1.0))
+	match head:
+		1: # Long reptilian muzzle.
+			_ellipse(mask, cx + 5, cy + 2, head_size * 0.87, head_size * 0.43, Color.WHITE, w, h)
+		2: # Paired ears and soft mammalian cheeks.
+			_ellipse(mask, cx - 6, cy - head_size, 3, 6, Color.WHITE, w, h)
+			_ellipse(mask, cx + 6, cy - head_size, 3, 6, Color.WHITE, w, h)
+		3: # Beak-shaped face.
+			_line(mask, cx + 2, cy + 2, cx + head_size + 5, cy + 4, 4, w, h)
+		4: # Broad mask and side cheek fins.
+			_ellipse(mask, cx, cy, head_size * 1.1, head_size * 0.65, Color.WHITE, w, h)
+			_line(mask, cx - 6, cy, cx - 11, cy + 5, 3, w, h)
+			_line(mask, cx + 6, cy, cx + 11, cy + 5, 3, w, h)
+		5: # Tall angular crown.
+			for side in [-1, 1]:
+				_line(mask, cx + side * 4, cy, cx + side * 7, cy - head_size - 5, 4, w, h)
+	if back == 1: # Defensive shell.
+		_ellipse(mask, 24, 26, 14 + epic * 3, 9, Color.WHITE, w, h)
+	elif back == 2: # Paired pointed wings.
+		for side in [-1, 1]:
+			_line(mask, 24 + side * 6, 23, 24 + side * (16 + 6 * epic), 10, 5, w, h)
+			_line(mask, 24 + side * (16 + 6 * epic), 10, 24 + side * 15, 29, 4, w, h)
+	elif back == 3: # Spikes read in silhouette.
+		for i in 4:
+			var px: float = 13 + i * 7
+			_line(mask, px, 20, px + 2, 11 - epic * 4, 3, w, h)
+	elif back == 4: # Organic crest.
+		_line(mask, cx - 4, cy - 5, cx + 2, cy - 13 - organic * 4, 4, w, h)
+		_line(mask, cx + 2, cy - 13 - organic * 4, cx + 8, cy - 5, 3, w, h)
+	if tail > 0 and form not in [Form.FISH, Form.SERPENT]:
+		var tail_y: float = 34 if form in [Form.BIPED, Form.BIPED_TAIL] else 30
+		_line(mask, 16, tail_y, 5, tail_y + (6 if tail == 2 else -6), 5 if tail == 2 else 3, w, h)
+		if tail in [3, 4]:
+			_ellipse(mask, 5, tail_y - 6, 4 if tail == 3 else 7, 6, Color.WHITE, w, h)
+	if limbs == 1: # Pronounced foreclaws.
+		for side in [-1, 1]:
+			_line(mask, 24 + side * 11, 27, 24 + side * 17, 37, 5, w, h)
+			for finger in 2:
+				_line(mask, 24 + side * 17, 37, 24 + side * (19 + finger * 2), 40 - finger * 4, 2, w, h)
+	elif limbs == 2: # Hooves.
+		for side in [-1, 1]:
+			_line(mask, 24 + side * 7, 32, 24 + side * 7, 41, 6, w, h)
+			_ellipse(mask, 24 + side * 7, 42, 5, 3, Color.WHITE, w, h)
+	elif limbs == 3: # Fins.
+		for side in [-1, 1]:
+			_line(mask, 24 + side * 8, 27, 24 + side * 19, 36, 6, w, h)
+	elif limbs == 4: # Tentacles.
+		for side in [-1, 1]:
+			_line(mask, 24 + side * 8, 28, 24 + side * 14, 37, 4, w, h)
+			_line(mask, 24 + side * 14, 37, 24 + side * 9, 43, 3, w, h)
+	if subtype == 1: # Hunter: raised shoulder silhouette.
+		_ellipse(mask, 24, 24, 10, 14, Color.WHITE, w, h)
+	elif subtype == 2: # Guardian: broad armoured lower bulk.
+		_ellipse(mask, 24, 32, 13, 9, Color.WHITE, w, h)
+	elif subtype == 3: # Ethereal: flickering anchored wisps.
+		for side in [-1, 1]:
+			_line(mask, 24 + side * 6, 33, 24 + side * 9, 42, 2, w, h)
