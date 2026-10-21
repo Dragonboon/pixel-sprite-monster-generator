@@ -55,3 +55,34 @@ At 48×48 and 14 selected creatures, **Compare all 14 forms** uses the same base
 5. Export one selected creature and a gallery, load PNG and JSON, and replay `CreatureSpeciesGenerator.render(genome, size)` at the exported size.
 6. Start several galleries quickly (including 48 items); only the latest run should populate its gallery.
 7. Verify UI at 1280×720 and 1920×1080. The three-column layout is intended for desktops, not mobile.
+
+## Modular Species DNA and Trait Mixer (schema v2)
+
+The original schema v1 render pipeline is unchanged for saved genomes. Enable **Modular anatomy** in Species Lab to create schema v2 creatures using head, limb, back and tail modules. The controls include a *Surprise me* option, six numeric mood influences (organic, epic, funny, creepy, cute, wild), mutation intensity, and per-trait mutation locks. Mood biases currently alter sampled proportions and anatomy (not just color); more expressive regional material painting remains follow-up work.
+
+```gdscript
+var options := {
+    "form": CreatureSpeciesGenerator.Form.BIPED,
+    "head": 1, # reptilian
+    "limbs": 1, # claws
+    "back": 2, # wings
+    "tail": 3, # flame
+    "moods": {"epic": 0.9, "creepy": 0.25, "funny": 0.7}
+}
+var genome := CreatureSpeciesDNA.sample(1234, options)
+var result := CreatureSpeciesGenerator.render(genome)
+var mutation := CreatureSpeciesDNA.mutate(genome, 4567, 0.65, {
+    "form": true, "head": true
+})
+var mutated_image := CreatureSpeciesGenerator.render(mutation)
+```
+
+The mutation seed is saved in the mutated genome. Explicitly locked semantic traits survive rerolls, while unlocked traits are resampled with probability controlled by intensity. Save the full JSON genome, not merely a seed, after mutations or manual design changes.
+
+### Run tests from the project without typing a Godot executable path
+
+**Inside the editor:** open `res://tests/run_from_editor.gd`, then choose **File → Run** (EditorScript). It launches the project tests using the running editor's own executable, prints PASS/FAIL in the Output panel, and avoids Python completely.
+
+**From a terminal:** run `python3 scripts/run_tests.py` (or `py scripts/run_tests.py` on Windows) without `--godot`; the script detects Godot in PATH and common Windows locations. Optionally set `GODOT_BIN` to override it.
+
+**GitHub Actions:** the PR workflow also runs the strict test suite against the pinned Godot version. Headless automated tests validate API and scene behavior, not the aesthetic quality of sampled anatomy. Inspect silhouettes in the lab before merging.
