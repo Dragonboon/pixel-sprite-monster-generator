@@ -53,9 +53,9 @@ if not version.startswith("4.7."):
     raise SystemExit("Use Godot 4.7.x (CI pins 4.7.2): " + version)
 run(["--headless", "--editor", "--import"])
 run(["--headless", "--script", "res://tests/load_scripts.gd"], "PASS: script loading")
-run(["--headless", "--script", "res://tests/regression.gd"], "PASS: generator regression")
 run(["--headless", "--script", "res://tests/species_regression.gd"], "PASS: procedural species")
 run(["--headless", "--script", "res://tests/species_lab_smoke.gd"], "PASS: species lab smoke")
+run(["--headless", "--script", "res://tests/regression.gd"], "PASS: generator regression")
 if args.render:
     run(["--rendering-method", "gl_compatibility", "--script", "res://tests/regression.gd"], "PASS: generator regression")
 print("PASS: all checks")
