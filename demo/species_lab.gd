@@ -169,11 +169,11 @@ func _build_ui() -> void:
 	mutation_strength.value = 0.45
 	settings.add_child(mutation_strength)
 	settings.add_child(_label("Lock traits when mutating", 12, MUTED))
-	for trait in ["form", "element", "head", "limbs", "back", "tail"]:
+	for trait_name in ["form", "element", "head", "limbs", "back", "tail"]:
 		var lock := CheckBox.new()
-		lock.text = trait.capitalize()
+		lock.text = trait_name.capitalize()
 		settings.add_child(lock)
-		lock_checks[trait] = lock
+		lock_checks[trait_name] = lock
 	_button(settings, "Mutate selected", _mutate_selected)
 	_button(settings, "Generate gallery", _start_batch.bind(false))
 	_button(settings, "Compare all 14 forms", _start_batch.bind(true))
