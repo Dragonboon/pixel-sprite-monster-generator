@@ -28,6 +28,7 @@ if not version.startswith("4.7."):
 run(["--headless", "--editor", "--import"])
 run(["--headless", "--script", "res://tests/load_scripts.gd"], "PASS: script loading")
 run(["--headless", "--script", "res://tests/regression.gd"], "PASS: generator regression")
+run(["--headless", "--script", "res://tests/species_regression.gd"], "PASS: procedural species")
 if args.render:
     run(["--rendering-method", "gl_compatibility", "--script", "res://tests/regression.gd"], "PASS: generator regression")
 print("PASS: all checks")
