@@ -35,6 +35,9 @@ var lock_checks: Dictionary = {}
 var mutation_strength: HSlider
 var use_modular: CheckBox
 var reference_genome: Dictionary = {}
+var stage_filter: OptionButton
+var diversity_toggle: CheckBox
+var diversity_strength: HSlider
 var progress: ProgressBar
 var status_label: Label
 var gallery_flow: HFlowContainer
@@ -175,6 +178,23 @@ func _build_ui() -> void:
 		settings.add_child(lock)
 		lock_checks[trait_name] = lock
 	_button(settings, "Mutate selected", _mutate_selected)
+	settings.add_child(_label("RENDER DIAGNOSTICS", 17))
+	stage_filter = OptionButton.new()
+	for stage_name in ["Raw mask", "Flat color", "Volume shading", "Finish shader"]:
+		stage_filter.add_item(stage_name)
+	stage_filter.select(3)
+	stage_filter.item_selected.connect(_refresh_stage)
+	settings.add_child(stage_filter)
+	diversity_toggle = CheckBox.new()
+	diversity_toggle.text = "Reject similar silhouettes"
+	diversity_toggle.button_pressed = true
+	settings.add_child(diversity_toggle)
+	diversity_strength = HSlider.new()
+	diversity_strength.min_value = 0.03
+	diversity_strength.max_value = 0.25
+	diversity_strength.step = 0.01
+	diversity_strength.value = 0.11
+	settings.add_child(diversity_strength)
 	_button(settings, "Generate gallery", _start_batch.bind(false))
 	_button(settings, "Compare all 14 forms", _start_batch.bind(true))
 	_button(settings, "New random seed", _new_seed)
@@ -341,11 +361,23 @@ func _generate_chunked(token: int, count: int, compare_forms: bool) -> void:
 			options["form"] = target_form
 			options["element"] = chosen_element
 			var genome: Dictionary = CreatureSpeciesDNA.sample(chosen_seed, options)
+			genome["render_stage"] = stage_filter.selected
 			candidate = CreatureSpeciesGenerator.render(genome, Vector2i(native_size, native_size))
 		else:
 			candidate = CreatureSpeciesGenerator.generate(
 				chosen_seed, Vector2i(native_size, native_size), target_form, chosen_element
 			)
+		if use_modular.button_pressed and diversity_toggle.button_pressed and not compare_forms:
+			for attempt in 6:
+				if not CreatureSpeciesDiversity.too_similar(candidate["image"], generated_items, diversity_strength.value):
+					break
+				chosen_seed += 1
+				var retry_options: Dictionary = _options()
+				retry_options["form"] = target_form
+				retry_options["element"] = chosen_element
+				var retry_genome: Dictionary = CreatureSpeciesDNA.sample(chosen_seed, retry_options)
+				retry_genome["render_stage"] = stage_filter.selected
+				candidate = CreatureSpeciesGenerator.render(retry_genome, Vector2i(native_size, native_size))
 		candidate["index"] = index
 		generated_items.append(candidate)
 		_add_card(candidate, index)
@@ -533,6 +565,7 @@ func _mutate_selected() -> void:
 	var next_seed: int = random_source.randi_range(0, 2000000000)
 	var mutated: Dictionary = CreatureSpeciesDNA.mutate(genome, next_seed, mutation_strength.value, locks)
 	var width: int = existing["image"].get_width() - 2
+	mutated["render_stage"] = stage_filter.selected
 	var result: Dictionary = CreatureSpeciesGenerator.render(mutated, Vector2i(width, width))
 	result["index"] = selected_index
 	generated_items[selected_index] = result
@@ -548,3 +581,23 @@ func _mutate_selected() -> void:
 	card_panels.insert(selected_index, replacement)
 	_select(selected_index)
 	status_label.text = "Mutated creature using seed %d" % next_seed
+
+func _refresh_stage(_selected: int) -> void:
+	if generated_items.is_empty():
+		return
+	for i in generated_items.size():
+		var item: Dictionary = generated_items[i]
+		var genome: Dictionary = item["genome"].duplicate(true)
+		if int(genome.get("schema_version", 1)) < 2:
+			continue
+		genome["render_stage"] = stage_filter.selected
+		var width: int = item["image"].get_width() - 2
+		var refreshed: Dictionary = CreatureSpeciesGenerator.render(genome, Vector2i(width, width))
+		refreshed["index"] = i
+		generated_items[i] = refreshed
+		var card: PanelContainer = card_panels[i]
+		var thumbnail: TextureRect = card.get_child(0).get_child(0) as TextureRect
+		thumbnail.texture = ImageTexture.create_from_image(refreshed["image"])
+	if selected_index >= 0:
+		_select(selected_index)
+	status_label.text = "Preview stage: %s" % stage_filter.get_item_text(stage_filter.selected)
