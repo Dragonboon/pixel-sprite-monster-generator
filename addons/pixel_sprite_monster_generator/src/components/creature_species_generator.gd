@@ -128,24 +128,35 @@ static func render(genome: Dictionary, size: Vector2i = Vector2i(48, 48)) -> Dic
 			_ellipse(mask, 24, 24, 13 * bw, 13 * bh, Color.WHITE, w, h)
 	if int(genome.get("schema_version", 1)) >= 2:
 		_apply_modules(mask, genome, form, w, h)
-	# Paint interior in four semantic tones, preserving a dark 1px contour.
-	for y in range(1, h + 1):
-		for x in range(1, w + 1):
-			if mask.get_pixel(x, y).a < 0.5:
-				continue
-			var border: bool = false
-			for delta in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-				if mask.get_pixel(x + delta.x, y + delta.y).a < 0.5:
-					border = true
-					break
-			var tone := body
-			if border:
-				tone = outline
-			elif y > h * 0.57:
-				tone = shadow
-			elif (x + y) % 9 == 0:
-				tone = light
-			image.set_pixel(x, y, tone)
+	if int(genome.get("schema_version", 1)) >= 2:
+		var stage: int = int(genome.get("render_stage", 2))
+		image = CreatureSpeciesFinish.paint(mask, PackedColorArray([outline, shadow, body, light]), mini(stage, 2), int(genome.get("seed", 0)))
+		if stage == CreatureSpeciesFinish.Stage.SHADER:
+			image = CreatureSpeciesFinish.apply_shader(image)
+	else:
+		# Legacy v1 rendering is retained for backwards compatibility.
+		pass
+	if int(genome.get("schema_version", 1)) < 2:
+		# Paint interior in four semantic tones, preserving a dark 1px contour.
+		for y in range(1, h + 1):
+			for x in range(1, w + 1):
+				if mask.get_pixel(x, y).a < 0.5:
+					continue
+				var border: bool = false
+				for delta in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					if mask.get_pixel(x + delta.x, y + delta.y).a < 0.5:
+						border = true
+						break
+				var tone := body
+				if border:
+					tone = outline
+				elif y > h * 0.57:
+					tone = shadow
+				elif (x + y) % 9 == 0:
+					tone = light
+				image.set_pixel(x, y, tone)
+	if int(genome.get("render_stage", 2)) == 0 and int(genome.get("schema_version", 1)) >= 2:
+		return {"genome": genome.duplicate(true), "image": image, "form": form, "element": element, "seed": int(genome.get("seed", 0)), "palette": PackedColorArray([outline, shadow, body, light, accent, eye, iris])}
 	# Organic markings are reproducible and only touch deep interior cells.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(genome.get("seed", 0)) ^ 0x4F8BC7
