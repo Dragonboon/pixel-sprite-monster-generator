@@ -29,6 +29,7 @@ run(["--headless", "--editor", "--import"])
 run(["--headless", "--script", "res://tests/load_scripts.gd"], "PASS: script loading")
 run(["--headless", "--script", "res://tests/regression.gd"], "PASS: generator regression")
 run(["--headless", "--script", "res://tests/species_regression.gd"], "PASS: procedural species")
+run(["--headless", "--script", "res://tests/species_lab_smoke.gd"], "PASS: species lab smoke")
 if args.render:
     run(["--rendering-method", "gl_compatibility", "--script", "res://tests/regression.gd"], "PASS: generator regression")
 print("PASS: all checks")
