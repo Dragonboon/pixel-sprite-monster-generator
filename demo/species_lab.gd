@@ -26,6 +26,15 @@ var count_input: SpinBox
 var form_filter: OptionButton
 var element_filter: OptionButton
 var size_filter: OptionButton
+var head_filter: OptionButton
+var back_filter: OptionButton
+var tail_filter: OptionButton
+var limb_filter: OptionButton
+var mood_sliders: Dictionary = {}
+var lock_checks: Dictionary = {}
+var mutation_strength: HSlider
+var use_modular: CheckBox
+var reference_genome: Dictionary = {}
 var progress: ProgressBar
 var status_label: Label
 var gallery_flow: HFlowContainer
@@ -87,7 +96,11 @@ func _build_ui() -> void:
 	body.add_child(left)
 	var settings := VBoxContainer.new()
 	settings.add_theme_constant_override("separation", 10)
-	left.add_child(settings)
+	var settings_scroll := ScrollContainer.new()
+	settings_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	settings_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	left.add_child(settings_scroll)
+	settings_scroll.add_child(settings)
 	settings.add_child(_label("01   GENERATION", 17))
 	settings.add_child(_label("Family / body plan", 12, MUTED))
 	form_filter = OptionButton.new()
@@ -123,6 +136,45 @@ func _build_ui() -> void:
 		size_filter.add_item("%d × %d" % [sprite_size, sprite_size])
 	size_filter.select(2)
 	settings.add_child(size_filter)
+
+	settings.add_child(HSeparator.new())
+	settings.add_child(_label("02   TRAIT MIXER", 17))
+	use_modular = CheckBox.new()
+	use_modular.text = "Modular anatomy"
+	use_modular.button_pressed = true
+	settings.add_child(use_modular)
+	head_filter = _trait_selector(settings, "Head", CreatureSpeciesDNA.HEADS)
+	limb_filter = _trait_selector(settings, "Limbs", CreatureSpeciesDNA.LIMBS)
+	back_filter = _trait_selector(settings, "Back feature", CreatureSpeciesDNA.BACKS)
+	tail_filter = _trait_selector(settings, "Tail", CreatureSpeciesDNA.TAILS)
+	settings.add_child(_label("Mood influences", 12, MUTED))
+	for mood in CreatureSpeciesDNA.MOODS:
+		var line := HBoxContainer.new()
+		settings.add_child(line)
+		line.add_child(_label(mood.capitalize(), 12, MUTED))
+		var slider := HSlider.new()
+		slider.min_value = 0
+		slider.max_value = 1
+		slider.step = 0.05
+		slider.value = 0.35
+		slider.custom_minimum_size.x = 130
+		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(slider)
+		mood_sliders[mood] = slider
+	settings.add_child(_label("Mutation strength", 12, MUTED))
+	mutation_strength = HSlider.new()
+	mutation_strength.min_value = 0.05
+	mutation_strength.max_value = 1.0
+	mutation_strength.step = 0.05
+	mutation_strength.value = 0.45
+	settings.add_child(mutation_strength)
+	settings.add_child(_label("Lock traits when mutating", 12, MUTED))
+	for trait in ["form", "element", "head", "limbs", "back", "tail"]:
+		var lock := CheckBox.new()
+		lock.text = trait.capitalize()
+		settings.add_child(lock)
+		lock_checks[trait] = lock
+	_button(settings, "Mutate selected", _mutate_selected)
 	_button(settings, "Generate gallery", _start_batch.bind(false))
 	_button(settings, "Compare all 14 forms", _start_batch.bind(true))
 	_button(settings, "New random seed", _new_seed)
@@ -283,9 +335,17 @@ func _generate_chunked(token: int, count: int, compare_forms: bool) -> void:
 			return
 		var chosen_seed: int = base_seed if compare_forms else base_seed + index * SEED_STEP
 		var target_form: int = index if compare_forms else (index % CreatureSpeciesGenerator.Form.size() if chosen_form < 0 else chosen_form)
-		var candidate: Dictionary = CreatureSpeciesGenerator.generate(
-			chosen_seed, Vector2i(native_size, native_size), target_form, chosen_element
-		)
+		var candidate: Dictionary
+		if use_modular.button_pressed:
+			var options: Dictionary = _options()
+			options["form"] = target_form
+			options["element"] = chosen_element
+			var genome: Dictionary = CreatureSpeciesDNA.sample(chosen_seed, options)
+			candidate = CreatureSpeciesGenerator.render(genome, Vector2i(native_size, native_size))
+		else:
+			candidate = CreatureSpeciesGenerator.generate(
+				chosen_seed, Vector2i(native_size, native_size), target_form, chosen_element
+			)
 		candidate["index"] = index
 		generated_items.append(candidate)
 		_add_card(candidate, index)
@@ -435,3 +495,56 @@ func _write_item(item: Dictionary, stem: String) -> Error:
 
 func _report_export_error(problem: Error) -> void:
 	status_label.text = "Export failed (Godot error %d)" % int(problem)
+
+func _trait_selector(parent: Node, caption: String, choices: Array) -> OptionButton:
+	parent.add_child(_label(caption, 12, MUTED))
+	var selector := OptionButton.new()
+	selector.add_item("Surprise me")
+	for option in choices:
+		selector.add_item(str(option))
+	parent.add_child(selector)
+	return selector
+
+
+func _options() -> Dictionary:
+	var moods: Dictionary = {}
+	for key in mood_sliders:
+		moods[key] = mood_sliders[key].value
+	return {
+		"head": head_filter.selected - 1,
+		"limbs": limb_filter.selected - 1,
+		"back": back_filter.selected - 1,
+		"tail": tail_filter.selected - 1,
+		"moods": moods
+	}
+
+
+func _mutate_selected() -> void:
+	if selected_index < 0:
+		return
+	var existing: Dictionary = generated_items[selected_index]
+	var genome: Dictionary = existing["genome"]
+	if int(genome.get("schema_version", 1)) < 2:
+		status_label.text = "Mutations need Modular anatomy enabled"
+		return
+	var locks: Dictionary = {}
+	for key in lock_checks:
+		locks[key] = lock_checks[key].button_pressed
+	var next_seed: int = random_source.randi_range(0, 2000000000)
+	var mutated: Dictionary = CreatureSpeciesDNA.mutate(genome, next_seed, mutation_strength.value, locks)
+	var width: int = existing["image"].get_width() - 2
+	var result: Dictionary = CreatureSpeciesGenerator.render(mutated, Vector2i(width, width))
+	result["index"] = selected_index
+	generated_items[selected_index] = result
+	# Recreate the card so its thumbnail, labels and inspector all refer to the new genome.
+	var old: PanelContainer = card_panels[selected_index]
+	var position: int = old.get_index()
+	gallery_flow.remove_child(old)
+	card_panels.remove_at(selected_index)
+	old.queue_free()
+	_add_card(result, selected_index)
+	var replacement: PanelContainer = card_panels.pop_back()
+	gallery_flow.move_child(replacement, position)
+	card_panels.insert(selected_index, replacement)
+	_select(selected_index)
+	status_label.text = "Mutated creature using seed %d" % next_seed
