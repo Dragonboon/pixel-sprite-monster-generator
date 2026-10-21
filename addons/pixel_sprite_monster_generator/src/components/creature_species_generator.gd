@@ -187,7 +187,7 @@ static func render(genome: Dictionary, size: Vector2i = Vector2i(48, 48)) -> Dic
 		"palette": PackedColorArray([outline, shadow, body, light, accent, eye, iris])
 	}
 
-static func _legs(image: Image, xs: Array[float], top: float, bottom: float, factor: float, w: int, h: int) -> void:
+static func _legs(image: Image, xs: Array, top: float, bottom: float, factor: float, w: int, h: int) -> void:
 	for x in xs:
 		_line(image, x, top, x + (2 if x > 24 else -2), top + (bottom - top) * factor, 4, w, h)
 
