@@ -86,3 +86,15 @@ The mutation seed is saved in the mutated genome. Explicitly locked semantic tra
 **From a terminal:** run `python3 scripts/run_tests.py` (or `py scripts/run_tests.py` on Windows) without `--godot`; the script detects Godot in PATH and common Windows locations. Optionally set `GODOT_BIN` to override it.
 
 **GitHub Actions:** the PR workflow also runs the strict test suite against the pinned Godot version. Headless automated tests validate API and scene behavior, not the aesthetic quality of sampled anatomy. Inspect silhouettes in the lab before merging.
+
+## Visual finish and diversity QA
+
+Schema v2 now supports `render_stage`: 0 raw mask, 1 flat palette, 2 silhouette-local volume shading, and 3 volume plus CPU finish. The old v1 shader/paint behavior is retained for compatibility. The former global Y>57% shadow boundary has been removed from v2. The lab provides a four-stage dropdown that rerenders the current batch and the selected preview. PNG export saves the **same CPU-finished pixels displayed in the gallery**, so no GPU readback is needed.
+
+The optional shader `addons/pixel_sprite_monster_generator/shaders/species_finish.gdshader` provides an alpha-edge lighting preview for external sprites. It is not stacked over the lab's CPU finish to avoid applying highlights twice. Export is deterministic and does not require a viewport.
+
+A silhouette-only 8×8 occupancy signature plus bounding dimensions and centroid helps reject near-identical sprites. Enable **Reject similar silhouettes** and adjust its threshold; generation retries up to six times, then accepts the best available result. This is a heuristic, not a promise of unique silhouettes.
+
+Schema v2 anatomy adds torso, abdomen, stance and wing style choices with mutation locks. Recoloring is deliberately excluded from silhouette diversity metrics. Inspect mask vs flat vs volume to distinguish anatomical defects from palette/lighting artifacts.
+
+**QA:** test each render stage, mutate while locking torso/head, export and reload PNG/JSON, and compare v1 snapshots. The CPU finish and shader use similar edge-light formulas but are not guaranteed bit-identical on every GPU. Visual quality still needs manual review in the editor.
