@@ -8,8 +8,12 @@ const LIMBS := ["Stubby", "Claws", "Hooves", "Fins", "Tentacles"]
 const BACKS := ["None", "Shell", "Wings", "Spines", "Crest"]
 const TAILS := ["None", "Whip", "Heavy", "Flame", "Leaf"]
 const SUBTYPES := ["Compact", "Hunter", "Guardian", "Ethereal"]
+const TORSOS := ["Compact", "Pear", "Barrel", "Triangle", "Slim"]
+const ABDOMENS := ["Round", "Segmented", "Tucked", "Heavy"]
+const STANCES := ["Standing", "Crouched", "Wide", "Leaning"]
+const WING_STYLES := ["Bat", "Feather", "Insect", "Manta"]
 const MOODS := ["organic", "epic", "funny", "creepy", "cute", "wild"]
-const TRAITS := ["form", "element", "subtype", "head", "limbs", "back", "tail",
+const TRAITS := ["form", "element", "subtype", "head", "limbs", "back", "tail", "torso", "abdomen", "stance", "wing_style",
 	"body_width", "body_height", "head_scale", "limb_length", "eye_count",
 	"eye_style", "mouth", "horns", "pattern", "accent_marks", "hue_shift"]
 
@@ -26,6 +30,10 @@ static func sample(seed_value: int, options: Dictionary = {}) -> Dictionary:
 	base["limbs"] = _choice(rng, options, "limbs", LIMBS.size())
 	base["back"] = _choice(rng, options, "back", BACKS.size())
 	base["tail"] = _choice(rng, options, "tail", TAILS.size())
+	base["torso"] = _choice(rng, options, "torso", TORSOS.size())
+	base["abdomen"] = _choice(rng, options, "abdomen", ABDOMENS.size())
+	base["stance"] = _choice(rng, options, "stance", STANCES.size())
+	base["wing_style"] = _choice(rng, options, "wing_style", WING_STYLES.size())
 	var mood_input: Dictionary = options.get("moods", {})
 	var moods: Dictionary = {}
 	for mood in MOODS:
@@ -50,7 +58,7 @@ static func sample(seed_value: int, options: Dictionary = {}) -> Dictionary:
 	base["hue_shift"] = rng.randf_range(-0.065, 0.065)
 	# Optional precise constraints are useful for replaying authored genetics.
 	for key in TRAITS:
-		if options.has(key) and key not in ["form", "element", "subtype", "head", "limbs", "back", "tail"]:
+		if options.has(key) and key not in ["form", "element", "subtype", "head", "limbs", "back", "tail", "torso", "abdomen", "stance", "wing_style"]:
 			base[key] = options[key]
 	return base
 
