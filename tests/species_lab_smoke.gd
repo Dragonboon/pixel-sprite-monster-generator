@@ -31,6 +31,14 @@ func run() -> void:
 	await process_frame
 	assert(lab.pinned_preview.texture != null, "Pinned preview should survive reroll")
 	assert(lab.generated_items[0]["image"].get_data() == before, "Same filter/seed must reproduce the same pixels")
+	assert(lab.head_filter != null and lab.mutation_strength != null)
+	assert(int(lab.generated_items[0]["genome"]["schema_version"]) == 2)
+	lab._select(0)
+	lab.lock_checks["head"].button_pressed = true
+	var head_before: int = lab.generated_items[0]["genome"]["head"]
+	lab._mutate_selected()
+	assert(int(lab.generated_items[0]["genome"]["head"]) == head_before)
+	assert(lab.preview.texture != null)
 	var scene: PackedScene = load("res://demo/test.tscn")
 	assert(scene != null and scene.can_instantiate(), "Legacy scene remains available")
 	print("PASS: species lab smoke")
