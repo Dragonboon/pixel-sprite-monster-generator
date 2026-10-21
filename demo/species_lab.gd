@@ -26,6 +26,10 @@ var count_input: SpinBox
 var form_filter: OptionButton
 var element_filter: OptionButton
 var size_filter: OptionButton
+var torso_filter: OptionButton
+var abdomen_filter: OptionButton
+var stance_filter: OptionButton
+var wing_style_filter: OptionButton
 var head_filter: OptionButton
 var back_filter: OptionButton
 var tail_filter: OptionButton
@@ -146,6 +150,10 @@ func _build_ui() -> void:
 	use_modular.text = "Modular anatomy"
 	use_modular.button_pressed = true
 	settings.add_child(use_modular)
+	torso_filter = _trait_selector(settings, "Torso", CreatureSpeciesDNA.TORSOS)
+	abdomen_filter = _trait_selector(settings, "Abdomen", CreatureSpeciesDNA.ABDOMENS)
+	stance_filter = _trait_selector(settings, "Stance", CreatureSpeciesDNA.STANCES)
+	wing_style_filter = _trait_selector(settings, "Wing style", CreatureSpeciesDNA.WING_STYLES)
 	head_filter = _trait_selector(settings, "Head", CreatureSpeciesDNA.HEADS)
 	limb_filter = _trait_selector(settings, "Limbs", CreatureSpeciesDNA.LIMBS)
 	back_filter = _trait_selector(settings, "Back feature", CreatureSpeciesDNA.BACKS)
@@ -172,7 +180,7 @@ func _build_ui() -> void:
 	mutation_strength.value = 0.45
 	settings.add_child(mutation_strength)
 	settings.add_child(_label("Lock traits when mutating", 12, MUTED))
-	for trait_name in ["form", "element", "head", "limbs", "back", "tail"]:
+	for trait_name in ["form", "element", "head", "limbs", "back", "tail", "torso", "abdomen", "stance", "wing_style"]:
 		var lock := CheckBox.new()
 		lock.text = trait_name.capitalize()
 		settings.add_child(lock)
@@ -543,6 +551,10 @@ func _options() -> Dictionary:
 	for key in mood_sliders:
 		moods[key] = mood_sliders[key].value
 	return {
+		"torso": torso_filter.selected - 1,
+		"abdomen": abdomen_filter.selected - 1,
+		"stance": stance_filter.selected - 1,
+		"wing_style": wing_style_filter.selected - 1,
 		"head": head_filter.selected - 1,
 		"limbs": limb_filter.selected - 1,
 		"back": back_filter.selected - 1,
