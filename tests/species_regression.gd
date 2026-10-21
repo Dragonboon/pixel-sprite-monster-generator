@@ -47,5 +47,27 @@ func run() -> void:
 	assert(CreatureSpeciesGenerator.render(changed)["image"].get_data() != modular["image"].get_data(),
 		"Changing head module must alter rendered pixels")
 	assert(CreatureSpeciesDNA.sample(500, options) == dna)
+
+	var raw_genome: Dictionary = dna.duplicate(true)
+	raw_genome["render_stage"] = 0
+	var raw_image: Image = CreatureSpeciesGenerator.render(raw_genome)["image"]
+	assert(raw_image.get_pixel(0, 0).a == 0.0)
+	var flat_genome: Dictionary = dna.duplicate(true)
+	flat_genome["render_stage"] = 1
+	var flat_image: Image = CreatureSpeciesGenerator.render(flat_genome)["image"]
+	var volume_genome: Dictionary = dna.duplicate(true)
+	volume_genome["render_stage"] = 2
+	var volume_image: Image = CreatureSpeciesGenerator.render(volume_genome)["image"]
+	assert(flat_image.get_data() != volume_image.get_data(), "Volume mode must change tones")
+	assert(raw_image.get_data() != flat_image.get_data(), "Mask and flat stages must differ")
+	var finished_genome: Dictionary = dna.duplicate(true)
+	finished_genome["render_stage"] = 3
+	var finished: Image = CreatureSpeciesGenerator.render(finished_genome)["image"]
+	assert(finished.get_data() == CreatureSpeciesGenerator.render(finished_genome)["image"].get_data())
+	assert(finished.get_pixel(0, 0).a == 0.0)
+	assert(CreatureSpeciesDiversity.distance(
+		CreatureSpeciesDiversity.signature(finished),
+		CreatureSpeciesDiversity.signature(finished)) < 0.00001)
+	assert(CreatureSpeciesFinish.horizontal_band_score(volume_image) >= 0.0)
 	print("PASS: procedural species")
 	quit()
