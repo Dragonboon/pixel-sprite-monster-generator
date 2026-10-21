@@ -19,6 +19,7 @@ var run_id: int = 0
 var generated_items: Array[Dictionary] = []
 var selected_index: int = -1
 var pinned_genome: Dictionary = {}
+var pinned_size: Vector2i = Vector2i(48, 48)
 
 var seed_input: SpinBox
 var count_input: SpinBox
@@ -353,6 +354,7 @@ func _pin_selection() -> void:
 		return
 	var item: Dictionary = generated_items[selected_index]
 	pinned_genome = item["genome"].duplicate(true)
+	pinned_size = Vector2i(item["image"].get_width() - 2, item["image"].get_height() - 2)
 	pinned_preview.texture = ImageTexture.create_from_image(item["image"])
 	pinned_preview.visible = true
 	pinned_info.text = "%s  ·  seed %d" % [
