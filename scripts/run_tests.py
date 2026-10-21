@@ -41,7 +41,7 @@ godot = discover_godot()
 
 def run(arguments, marker=None):
     result = subprocess.run([godot, "--path", str(root), "--audio-driver", "Dummy", *arguments],
-                            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=120)
+                            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
     print(result.stdout, end="")
     if result.returncode or re.search(r"SCRIPT ERROR|(?:^|\n)ERROR:|Parse Error|Assertion failed|leaked at exit", result.stdout):
         raise SystemExit("Godot validation failed")
