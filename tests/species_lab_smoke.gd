@@ -16,7 +16,10 @@ func run() -> void:
 	assert(lab.preview.texture != null, "Inspector preview missing")
 	var before: PackedByteArray = lab.generated_items[0]["image"].get_data()
 	lab._start_batch(true)
-	await process_frame
+	for frame in 10:
+		if lab.generated_items.size() == CreatureSpeciesGenerator.Form.size():
+			break
+		await process_frame
 	assert(lab.generated_items.size() == CreatureSpeciesGenerator.Form.size(), "Comparison must include all 14 forms")
 	for i in lab.generated_items.size():
 		assert(int(lab.generated_items[i]["form"]) == i, "Form order mismatch")
