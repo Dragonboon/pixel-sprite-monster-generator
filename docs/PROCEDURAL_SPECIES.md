@@ -31,3 +31,27 @@ All visual marks are procedurally generated and no copyrighted sprites or refere
 - Exported image is transparent RGBA8 with one pixel of padding. The generator is CPU-based and synchronous.
 
 Validation: run `godot --headless --path . --script res://tests/species_regression.gd` under Godot 4.7.x after importing the project. Run the full `python3 scripts/run_tests.py --godot /path/to/godot` suite before merging.
+
+## Dedicated species lab
+
+Open `res://demo/species_lab.tscn` directly, or select **Open Species Lab** from the original `demo/test.tscn` laboratory. The classic gallery remains the project's default starting scene; the laboratories can navigate back and forth without changing the generation API.
+
+The Species Lab is organized into three areas:
+
+- **Generation:** selected body plan (or balanced forms), elemental palette, fixed base seed, count (1–48), native resolution (24–128), and actions to explore new seeds or compare all 14 forms under one seed.
+- **Gallery:** progressive batches yielding to the scene tree after every four generated sprites. Select images or click **Inspect**. The current card is visibly highlighted.
+- **Genome inspector:** enlarged nearest-neighbor preview, metadata, JSON genome, pin a reference creature for comparison, copy JSON to clipboard, or export selected creature.
+
+**Export gallery** saves each PNG plus its versioned genome JSON and a collection manifest in `user://species_lab/`. The exported PNGs are actual generated images, not preview screenshots. Generated images are held only for the current gallery and regenerated when a new batch starts. All image generation occurs synchronously per creature on the main thread; yielding only occurs between chunks. The pinned preview persists across gallery refreshes.
+
+At 48×48 and 14 selected creatures, **Compare all 14 forms** uses the same base seed and palette element for every entry, useful for controlled visual QA. It intentionally ignores the form filter. **Generate gallery** changes the seed per entry and respects the selected form filter.
+
+### Manual QA checklist
+
+1. Open both lab scenes in Godot 4.7; navigate between them without errors or altered legacy results.
+2. Generate all 14 forms repeatedly with the same seed and element. Confirm pixel-identical output and stable order.
+3. Change element and confirm the morphology holds while the palette changes. Change resolution and verify transparent padding and nearest filtering.
+4. Pin one creature; generate a new gallery and confirm the pinned visual reference remains.
+5. Export one selected creature and a gallery, load PNG and JSON, and replay `CreatureSpeciesGenerator.render(genome, size)` at the exported size.
+6. Start several galleries quickly (including 48 items); only the latest run should populate its gallery.
+7. Verify UI at 1280×720 and 1920×1080. The three-column layout is intended for desktops, not mobile.
