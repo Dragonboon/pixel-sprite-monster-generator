@@ -60,6 +60,7 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	var dir: int = posmod(direction, Direction.size())
 	var state: int = clampi(action, 0, Action.size() - 1)
 	var tick: int = posmod(frame, FRAMES)
+	var pose: Dictionary = CreatureTopdownMotion.sample(genome, state, tick)
 	var a: float = float(dir) * PI / 4.0
 	var facing := Vector2(sin(a), cos(a))
 	var lateral := Vector2(facing.y, -facing.x)
@@ -117,7 +118,7 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 		_stroke(image, trail, origin.call(0.0, -6.0, 11.0), (2.5 + dash_progress * 2.0) * scale, colors, 1)
 
 	# Draw occluded structures first. Outlines are local to each volume.
-	var tail_tip: Vector2 = origin.call(0.0, -19.0 * tail_len, 10.0 + sin(phase) * 1.5)
+	var tail_tip: Vector2 = origin.call(float(pose["tail_sway"]) * 0.65, -19.0 * tail_len, 10.0 + sin(phase) * 1.5)
 	var tail_root: Vector2 = origin.call(0.0, -5.0, 10.0)
 	if family in [Family.REPTILE, Family.BEAST, Family.SHELL, Family.SERPENT, Family.PLANT]:
 		_stroke(image, tail_root, tail_tip, (4.5 if family != Family.SERPENT else 8.0) * scale, colors, 4)
@@ -128,20 +129,26 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	if family == Family.BAT or family == Family.BEETLE:
 		for side in [-1.0, 1.0]:
 			var wing_root: Vector2 = origin.call(side * 5.0, -2.0, 17.0)
-			var wing_tip: Vector2 = origin.call(side * (19.0 + sin(phase) * 2.0), -8.0, 21.0 + sin(phase) * 2.0)
+			var wing_tip: Vector2 = origin.call(side * (19.0 + float(pose["wing_flap"])), -8.0, 21.0 + float(pose["wing_flap"]))
 			_stroke(image, wing_root, wing_tip, 7.0 * scale, colors, 4)
 			_oval(image, wing_tip, (6.0 if family == Family.BAT else 8.0) * scale, 4.5 * scale, colors, 4)
 
 	var is_floating: bool = family in [Family.GHOST, Family.BAT]
 	if not is_floating and family != Family.SERPENT:
-		for side in [-1.0, 1.0]:
-			var leg_base: Vector2 = origin.call(side * 6.0 * bw, -1.0, 8.0)
-			var foot: Vector2 = origin.call(side * (7.5 + swing * 0.12 + stance_style * 1.65),
-			3.0 + swing * side + (2.0 if appendage_style == 3 else 0.0), 2.0)
-			_stroke(image, leg_base, foot, 4.0 * ll * scale, colors, 1)
-			_oval(image, foot, 4.5 * scale, 3.2 * scale, colors, 2)
+		var number_of_pairs: int = 2 if family in [Family.BEAST, Family.SHELL, Family.BEETLE] else 1
+		if family == Family.BEETLE:
+			number_of_pairs = 3
+		for pair_index in number_of_pairs:
+			for side in [-1.0, 1.0]:
+				var foot_pose: Dictionary = CreatureTopdownMotion.foot(pose, family, side, pair_index)
+				var forward_socket: float = -4.5 + float(pair_index) * 6.0
+				var foot_height: float = 2.0 + float(foot_pose["lift"])
+				var leg_base: Vector2 = origin.call(side * 6.0 * bw, forward_socket, 8.0)
+				var foot: Vector2 = origin.call(side * (7.5 + float(pair_index) * 1.4), forward_socket + 4.0 + float(foot_pose["forward"]), foot_height)
+				_stroke(image, leg_base, foot, 4.0 * ll * scale, colors, 1)
+				_oval(image, foot, 4.5 * scale, (3.2 if bool(foot_pose["contact"]) else 2.5) * scale, colors, 2)
 
-	var torso: Vector2 = origin.call(0.0, -1.0 + attack_offset, 15.0 + charge)
+	var torso: Vector2 = origin.call(0.0, -1.0 + attack_offset, 15.0 + charge + float(pose["body_bob"]) * 0.5)
 	var torso_w: float = (12.0 if family != Family.SERPENT else 9.0) * bw
 	torso_w *= [0.78, 1.18, 0.90, 1.05, 1.30, 0.85][body_shape]
 	var torso_h: float = (10.0 if family != Family.BEETLE else 13.0) * bh
@@ -235,8 +242,11 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 		if int(genome.get("mouth", 0)) != 0 and family != Family.BEETLE:
 			_stroke(image, origin.call(-2.0, face_forward + 9.5, 22.8), origin.call(2.0, face_forward + 9.5, 22.8), 1.0 * scale, colors, 0)
 
+	# Directional depth: forward arms are drawn over the torso; rear-facing
+	# arms remain tucked behind the head and chest.
+	var draw_near_arms: bool = facing.y > -0.4
 	# Near appendages are deliberately rendered last to overlap the torso.
-	if family not in [Family.SERPENT, Family.GHOST]:
+	if draw_near_arms and family not in [Family.SERPENT, Family.GHOST]:
 		for side in [-1.0, 1.0]:
 			var arm: Vector2 = origin.call(side * (10.0 * bw), 5.0 + swing * side, 14.0)
 			_stroke(image, origin.call(side * (8.5 * bw), 4.0, 20.0), arm, 3.8 * scale, colors, 2)
