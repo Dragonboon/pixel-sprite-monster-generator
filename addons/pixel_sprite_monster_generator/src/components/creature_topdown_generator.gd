@@ -28,6 +28,13 @@ static func species(seed_value: int, family: int = -1, element: int = -1) -> Dic
 		"family": chosen_family,
 		"element": chosen_element,
 		"body_width": rng.randf_range(0.76, 1.34),
+		"body_shape": rng.randi_range(0, 5),
+		"stance_style": rng.randi_range(0, 3),
+		"head_position": rng.randi_range(0, 3),
+		"appendage_style": rng.randi_range(0, 4),
+		"plant_motif": rng.randi_range(0, 4),
+		"shell_motif": rng.randi_range(0, 3),
+		"motion_style": rng.randi_range(0, 5),
 		"body_height": rng.randf_range(0.78, 1.28),
 		"head_size": rng.randf_range(0.72, 1.40),
 		"leg_length": rng.randf_range(0.67, 1.40),
@@ -92,6 +99,12 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	var hs: float = float(genome.get("head_size", 1.0))
 	var ll: float = float(genome.get("leg_length", 1.0))
 	var tail_len: float = float(genome.get("tail_length", 1.0))
+	var body_shape: int = int(genome.get("body_shape", 0))
+	var stance_style: int = int(genome.get("stance_style", 0))
+	var head_position: int = int(genome.get("head_position", 0))
+	var appendage_style: int = int(genome.get("appendage_style", 0))
+	var plant_motif: int = int(genome.get("plant_motif", 0))
+	var shell_motif: int = int(genome.get("shell_motif", 0))
 	# Projection of a small 3D-like puppet. Side, forward and height are
 	# independent axes; view changes do not generate new anatomy.
 	# For a south-facing creature, the head is raised and slightly forward.
@@ -123,13 +136,16 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	if not is_floating and family != Family.SERPENT:
 		for side in [-1.0, 1.0]:
 			var leg_base: Vector2 = origin.call(side * 6.0 * bw, -1.0, 8.0)
-			var foot: Vector2 = origin.call(side * (7.5 + swing * 0.12), 3.0 + swing * side, 2.0)
+			var foot: Vector2 = origin.call(side * (7.5 + swing * 0.12 + stance_style * 1.65),
+			3.0 + swing * side + (2.0 if appendage_style == 3 else 0.0), 2.0)
 			_stroke(image, leg_base, foot, 4.0 * ll * scale, colors, 1)
 			_oval(image, foot, 4.5 * scale, 3.2 * scale, colors, 2)
 
 	var torso: Vector2 = origin.call(0.0, -1.0 + attack_offset, 15.0 + charge)
 	var torso_w: float = (12.0 if family != Family.SERPENT else 9.0) * bw
+	torso_w *= [0.78, 1.18, 0.90, 1.05, 1.30, 0.85][body_shape]
 	var torso_h: float = (10.0 if family != Family.BEETLE else 13.0) * bh
+	torso_h *= [1.23, 0.82, 1.25, 0.87, 1.08, 1.08][body_shape]
 	if family == Family.GHOST:
 		torso_h *= 1.28
 	if family == Family.SHELL:
@@ -142,16 +158,35 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 		torso_h *= 1.0 - 0.62 * faint_progress
 	_oval(image, torso, torso_w * scale, torso_h * scale, colors, 2)
 	if family == Family.SHELL or family == Family.BEETLE:
-		var shell: Vector2 = origin.call(0.0, -4.0, 18.0 + charge)
-		_oval(image, shell, (torso_w + 1.0) * scale, (torso_h - 0.5) * scale, colors, 4)
-		_stroke(image, origin.call(-5.0, -4.0, 22.0), origin.call(5.0, -4.0, 22.0), 1.4 * scale, colors, 1)
+		# Caparazón elevado: volumen dorsal, reborde lateral y placas que lo
+		# conectan visualmente con el torso. No es una lámina plana transversal.
+		var shell: Vector2 = origin.call(0.0, -5.0, 19.0 + charge)
+		var shell_width: float = torso_w * (0.86 + float(shell_motif % 3) * 0.08)
+		_oval(image, shell + Vector2(0.0, 2.8 * scale), shell_width * scale,
+			(torso_h * 0.86) * scale, colors, 1)
+		_oval(image, shell + Vector2(0.0, -2.0 * scale),
+			(shell_width - 0.8) * scale, (torso_h * 0.75) * scale, colors, 4)
+		_stroke(image, origin.call(-shell_width * 0.6, -5.0, 16.5),
+			origin.call(shell_width * 0.6, -5.0, 16.5), 2.8 * scale, colors, 1)
+		for side in [-1.0, 1.0]:
+			_stroke(image, origin.call(side * shell_width * 0.45, -5.0, 19.0),
+				origin.call(side * shell_width * 0.22, -5.0, 25.0), 1.2 * scale, colors, 1)
+		if shell_motif == 2:
+			_stroke(image, shell, origin.call(0.0, -10.0, 23.0), 1.4 * scale, colors, 1)
 	elif family == Family.PLANT:
-		_oval(image, origin.call(-5.0, -4.0, 22.0), 5.0 * scale, 8.0 * scale, colors, 4)
-		_oval(image, origin.call(5.0, -4.0, 22.0), 5.0 * scale, 8.0 * scale, colors, 4)
+		# Tallos y hojas alargadas con nervio central: las estructuras vegetales
+		# necesitan silueta flexible, no bloques ni facetas minerales.
+		for side in [-1.0, 1.0]:
+			var leaf_root: Vector2 = origin.call(side * 3.0, -4.0, 21.0)
+			var leaf_tip: Vector2 = origin.call(side * (9.0 + plant_motif * 1.3),
+				-9.0 + float(plant_motif % 2) * 4.0, 30.0 + float(plant_motif % 3) * 2.5)
+			_stroke(image, leaf_root, leaf_tip, 2.1 * scale, colors, 1)
+			_leaf(image, leaf_root, leaf_tip, (3.8 + float(plant_motif % 3)) * scale, colors)
 
 	# Head is positioned from the same forward socket for every direction.
 	var face_forward: float = 8.0 + attack_offset
-	var head: Vector2 = origin.call(0.0, face_forward, 25.0 * bh + charge)
+	var head: Vector2 = origin.call(float(head_position - 1) * 1.4,
+		face_forward + float(head_position % 3) * 2.2, 25.0 * bh + charge)
 	var rx: float = (8.5 if family != Family.BEAST else 10.0) * hs
 	var ry: float = (8.0 if family != Family.BEETLE else 6.2) * hs
 	if family == Family.GHOST:
@@ -170,7 +205,10 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 			_stroke(image, origin.call(side * 4.0, face_forward + 3.0, 30.0),
 				origin.call(side * 7.0, face_forward + 8.0, 38.0), 1.8 * scale, colors, 4)
 	elif family == Family.PLANT:
-		_oval(image, origin.call(0.0, face_forward - 4.0, 34.0), 5.0 * scale, 8.0 * scale, colors, 4)
+		var sprout: Vector2 = origin.call(0.0, face_forward - 3.5, 32.0)
+		var sprout_tip: Vector2 = origin.call(float(plant_motif % 3 - 1) * 4.0,
+			face_forward - 7.5, 38.0 + float(plant_motif % 2) * 3.0)
+		_leaf(image, sprout, sprout_tip, 3.8 * scale, colors)
 	var horns: int = int(genome.get("horns", 0))
 	if horns > 0 and family not in [Family.GHOST, Family.PLANT]:
 		for side in [-1.0, 1.0]:
@@ -190,7 +228,8 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 		for side in [-1.0, 1.0]:
 			if absf(facing.x) > 0.7 and side * facing.x < 0.0:
 				continue
-			var eye_pos: Vector2 = origin.call(side * eye_spacing, face_forward + 7.8, 28.0 * bh)
+			var eye_pos: Vector2 = origin.call(float(head_position - 1) * 1.4 + side * eye_spacing,
+			face_forward + float(head_position % 3) * 2.2 + 7.8, 28.0 * bh)
 			_oval(image, eye_pos, eye_size, eye_size, [colors[0], colors[0], colors[5], colors[5], colors[5], colors[5], colors[6]], 2)
 			_oval(image, eye_pos + facing * scale, 0.9 * scale, 1.5 * scale, [colors[0], colors[0], colors[6], colors[6], colors[6], colors[6], colors[6]], 2)
 		if int(genome.get("mouth", 0)) != 0 and family != Family.BEETLE:
@@ -242,6 +281,19 @@ static func _oval(image: Image, center: Vector2, rx: float, ry: float, palette: 
 				elif nx + ny < -0.43:
 					color = palette[3]
 			image.set_pixel(x, y, color)
+
+
+# Hoja fusiforme entre dos anclajes, con nervadura y punta reconocibles.
+static func _leaf(image: Image, root: Vector2, tip: Vector2, width: float, palette: Array[Color]) -> void:
+	var axis: Vector2 = (tip - root).normalized()
+	var normal: Vector2 = Vector2(-axis.y, axis.x)
+	for step in 9:
+		var t: float = float(step) / 8.0
+		var tip_scale: float = 1.0 - absf(t * 2.0 - 1.0)
+		var point: Vector2 = root.lerp(tip, t)
+		_stroke(image, point - normal * width * tip_scale,
+			point + normal * width * tip_scale, 1.8, palette, 4)
+	_stroke(image, root, tip, 1.1, palette, 1)
 
 
 static func _stroke(image: Image, start: Vector2, end: Vector2, thickness: float, palette: Array[Color], role: int) -> void:
