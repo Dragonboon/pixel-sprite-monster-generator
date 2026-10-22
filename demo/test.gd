@@ -70,6 +70,11 @@ func _ready() -> void:
 	title.text = "Procedural monster laboratory"
 	title.add_theme_font_size_override("font_size", 24)
 	layout.add_child(title)
+	var open_species := Button.new()
+	open_species.text = "Open Species Lab (new generator)"
+	open_species.tooltip_text = "Explore 14 procedural body plans and inspect reproducible genomes"
+	open_species.pressed.connect(func() -> void: get_tree().change_scene_to_file("res://demo/species_lab.tscn"))
+	layout.add_child(open_species)
 	var controls := HBoxContainer.new()
 	layout.add_child(controls)
 	var seed_label := Label.new()
