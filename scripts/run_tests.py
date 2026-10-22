@@ -54,6 +54,7 @@ if not version.startswith("4.7."):
 run(["--headless", "--editor", "--import"])
 run(["--headless", "--script", "res://tests/load_scripts.gd"], "PASS: script loading")
 run(["--headless", "--script", "res://tests/species_regression.gd"], "PASS: procedural species")
+run(["--headless", "--script", "res://tests/topdown_regression.gd"], "PASS: topdown species")
 run(["--headless", "--script", "res://tests/species_lab_smoke.gd"], "PASS: species lab smoke")
 run(["--headless", "--script", "res://tests/regression.gd"], "PASS: generator regression")
 if args.render:
