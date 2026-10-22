@@ -7,6 +7,7 @@ const TESTS := [
 	"res://tests/load_scripts.gd",
 	"res://tests/regression.gd",
 	"res://tests/species_regression.gd",
+	"res://tests/topdown_regression.gd",
 	"res://tests/species_lab_smoke.gd"
 ]
 
