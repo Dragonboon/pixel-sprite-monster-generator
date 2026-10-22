@@ -98,3 +98,25 @@ A silhouette-only 8×8 occupancy signature plus bounding dimensions and centroid
 Schema v2 anatomy adds torso, abdomen, stance and wing style choices with mutation locks. Recoloring is deliberately excluded from silhouette diversity metrics. Inspect mask vs flat vs volume to distinguish anatomical defects from palette/lighting artifacts.
 
 **QA:** test each render stage, mutate while locking torso/head, export and reload PNG/JSON, and compare v1 snapshots. The CPU finish and shader use similar edge-light formulas but are not guaranteed bit-identical on every GPU. Visual quality still needs manual review in the editor.
+
+## Eight-direction top-down pipeline (experimental)
+
+Open `res://demo/topdown_lab.tscn` or use the link from the Species Lab. The standalone renderer `CreatureTopdownGenerator` implements eight facing directions in the exact order `S, SW, W, NW, N, NE, E, SE` and seven actions (Idle, Walk, Hurt, Charge, Shoot, Attack, Faint), with 4 frames per direction. These sprites are original, algorithmically painted and share a single species seed; no Pokémon sprites or extracted parts are committed.
+
+The generator currently has eight morphology families (reptile, beast, beetle, ghost, bat, plant, shell, serpent). Its puppet derives head, torso, limbs, tail and ornaments from one semantic genome, projects them into the chosen orientation and renders them to native RGBA8 cells. This is an initial proof of the directional pipeline, not a claim of commercial hand-authored asset quality. Motion is simplified by per-frame offsets; future production improvements require articulated gait and archetype-specific attack frames.
+
+```gdscript
+var dna: Dictionary = CreatureTopdownGenerator.species(12345, CreatureTopdownGenerator.Family.REPTILE, 3)
+var facing_east: Image = CreatureTopdownGenerator.render(
+    dna, CreatureTopdownGenerator.Direction.E,
+    CreatureTopdownGenerator.Action.WALK, 2, 64
+)
+var sheet: Dictionary = CreatureTopdownSheets.build(dna, CreatureTopdownGenerator.Action.WALK, 64)
+var error: Error = CreatureTopdownSheets.export_pack(dna, "user://topdown_species/seed_12345", 64)
+```
+
+The export creates original transparent `idle.png`, `walk.png`, `hurt.png`, `charge.png`, `shoot.png`, `attack.png`, `faint.png`, and `species.json` with row order, cell size, frames, FPS and pivot. Each sheet is 8 rows × 4 columns of equal-sized cells (64 px by default). Pixel filtering should be set to nearest in your game.
+
+The supplied reference ZIP was examined locally to learn the seven action categories, the eight-direction arrangement, and variability in original sprite-sheet dimensions. It is not included in the GitHub repository, runtime plugin, CI artifacts or exports. All newly exported images are drawn from procedural primitives.
+
+Run `res://tests/topdown_regression.gd` using the built-in editor test launcher for fixed-seed/direction/export validation.
