@@ -4,11 +4,13 @@ extends RefCounted
 ## Eight-direction orthographic pixel creatures derived from one semantic DNA.
 ## Original procedural geometry only; no reference sprites or external runtime assets.
 enum Direction { S, SW, W, NW, N, NE, E, SE }
-enum Action { IDLE, WALK, HURT, CHARGE, SHOOT, ATTACK, FAINT }
+enum Action { IDLE, WALK, HURT, CHARGE, SHOOT, ATTACK, FAINT, IDLE_B, WALK_B, DASH }
 enum Family { REPTILE, BEAST, BEETLE, GHOST, BAT, PLANT, SHELL, SERPENT }
 
 const DIRECTIONS := ["S", "SW", "W", "NW", "N", "NE", "E", "SE"]
-const ACTIONS := ["Idle", "Walk", "Hurt", "Charge", "Shoot", "Attack", "Faint"]
+const ACTIONS := ["Idle", "Walk", "Hurt", "Charge", "Shoot", "Attack", "Faint", "IdleB", "WalkB", "Dash"]
+const ACTION_FILES := ["idle", "walk", "hurt", "charge", "shoot", "attack", "faint", "idle_b", "walk_b", "dash"]
+const ACTION_VARIANTS := {"idle": ["Idle", "IdleB"], "walk": ["Walk", "WalkB"], "dash": ["Dash"], "faint": ["Faint"]}
 const FAMILIES := ["Reptile", "Beast", "Beetle", "Ghost", "Bat", "Plant", "Shell", "Serpent"]
 const FRAMES: int = 4
 const DEFAULT_SIZE: int = 64
@@ -55,14 +57,24 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	var facing := Vector2(sin(a), cos(a))
 	var lateral := Vector2(facing.y, -facing.x)
 	var phase: float = float(tick) * TAU / float(FRAMES)
-	var moving: bool = state == Action.WALK
-	var swing: float = sin(phase) * (3.2 if moving else 0.4)
-	var bob: float = (1.6 if moving else 0.55) * sin(phase + PI * 0.5)
+	# Las variantes comparten anatomía, pero no el mismo ciclo de movimiento.
+	var moving: bool = state in [Action.WALK, Action.WALK_B, Action.DASH]
+	var walk_variant: bool = state == Action.WALK_B
+	var idle_variant: bool = state == Action.IDLE_B
+	var dash_progress: float = float(tick) / float(FRAMES - 1) if state == Action.DASH else 0.0
+	var faint_progress: float = float(tick) / float(FRAMES - 1) if state == Action.FAINT else 0.0
+	var motion_style: int = int(genome.get("motion_style", 0))
+	var rhythm: float = 1.0 + float(motion_style % 3) * 0.18
+	var gait_phase: float = phase + (PI * 0.5 if walk_variant else 0.0)
+	var swing: float = sin(gait_phase) * (4.1 * rhythm if walk_variant else (3.2 * rhythm if moving else 0.4))
+	var bob: float = (1.25 if walk_variant else (2.0 if state == Action.DASH else (1.6 if moving else 0.55))) * sin(gait_phase + PI * 0.5)
+	if idle_variant:
+		bob = 0.25 * sin(phase) + 1.2 * sin(phase * 0.5)
 	var attack_offset: float = (2.5 if state in [Action.ATTACK, Action.SHOOT] else 0.0) * sin(phase * 0.5)
-	var faint: float = float(tick) * 2.0 if state == Action.FAINT else 0.0
 	var recoil: float = 2.0 if state == Action.HURT and tick % 2 == 1 else 0.0
 	var charge: float = 1.3 if state == Action.CHARGE else 0.0
-	var base: Vector2 = Vector2(32.0, 45.0 + faint * 0.5 + recoil)
+	var base: Vector2 = Vector2(32.0 + (1.0 if idle_variant else 0.0) * sin(phase), 45.0 + faint_progress * 3.0 + recoil)
+	var collapse: float = 1.0 - faint_progress * 0.83
 	var scale: float = float(dimension) / 64.0
 	var hue: float = fposmod(HUES[clampi(int(genome.get("element", 0)), 0, HUES.size() - 1)] + float(genome.get("primary_hue_offset", 0.0)), 1.0)
 	var accent_hue: float = fposmod(hue + float(genome.get("accent_hue_offset", 0.4)), 1.0)
@@ -84,7 +96,12 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	# independent axes; view changes do not generate new anatomy.
 	# For a south-facing creature, the head is raised and slightly forward.
 	var origin := func(side: float, forward: float, height: float) -> Vector2:
-		return (base + lateral * side + facing * forward * 0.68 + Vector2(0.0, -height - bob)) * scale
+		return (base + lateral * side + facing * forward * (0.85 if state == Action.DASH else 0.68) + Vector2(0.0, -height * collapse - bob)) * scale
+
+	# Estela corta, detrás del cuerpo. No introduce sprites auxiliares.
+	if state == Action.DASH and tick > 0:
+		var trail: Vector2 = origin.call(0.0, -12.0 - dash_progress * 5.0, 10.0)
+		_stroke(image, trail, origin.call(0.0, -6.0, 11.0), (2.5 + dash_progress * 2.0) * scale, colors, 1)
 
 	# Draw occluded structures first. Outlines are local to each volume.
 	var tail_tip: Vector2 = origin.call(0.0, -19.0 * tail_len, 10.0 + sin(phase) * 1.5)
@@ -118,6 +135,11 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	if family == Family.SHELL:
 		torso_w *= 1.30
 		torso_h *= 1.20
+	if state == Action.DASH:
+		torso_h *= 1.0 + 0.16 * sin(PI * dash_progress)
+		torso_w *= 1.0 - 0.14 * sin(PI * dash_progress)
+	if state == Action.FAINT:
+		torso_h *= 1.0 - 0.62 * faint_progress
 	_oval(image, torso, torso_w * scale, torso_h * scale, colors, 2)
 	if family == Family.SHELL or family == Family.BEETLE:
 		var shell: Vector2 = origin.call(0.0, -4.0, 18.0 + charge)
@@ -135,6 +157,8 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	if family == Family.GHOST:
 		rx *= 1.18
 		ry *= 1.18
+	if state == Action.FAINT:
+		ry *= 1.0 - faint_progress * 0.62
 	_oval(image, head, rx * scale, ry * scale, colors, 2)
 	if family == Family.REPTILE or family == Family.SERPENT:
 		_oval(image, origin.call(0.0, face_forward + 6.5, 21.5 * bh), 6.0 * scale, 3.6 * scale, colors, 3)
@@ -157,8 +181,11 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 	# Semantic visibility: front face on S/SE/SW, a single eye on E/W,
 	# and no front facial symbols on N/NW/NE.
 	var frontness: float = facing.y
-	if frontness > -0.16 and state != Action.FAINT:
+	if frontness > -0.16 and (state != Action.FAINT or faint_progress < 0.8):
+		var blinking: bool = state == Action.IDLE_B and tick == 2
 		var eye_size: float = (2.4 if int(genome.get("eye_type", 0)) == 0 else 1.6) * scale
+		if blinking:
+			eye_size = 1.0 * scale
 		var eye_spacing: float = 3.5 * hs
 		for side in [-1.0, 1.0]:
 			if absf(facing.x) > 0.7 and side * facing.x < 0.0:
@@ -182,6 +209,14 @@ static func render(genome: Dictionary, direction: int, action: int = Action.IDLE
 		for i in range(3 + int(genome.get("markings", 0))):
 			var part: Vector2 = origin.call(float(i % 3 - 1) * 3.6, float(i / 3) * -3.5, 21.0)
 			_oval(image, part, 1.3 * scale, 1.3 * scale, colors, 4)
+	# La última fase de debilitamiento pierde presencia después de desplomarse.
+	if state == Action.FAINT and tick == FRAMES - 1:
+		for py in dimension:
+			for px in dimension:
+				var pixel: Color = image.get_pixel(px, py)
+				if pixel.a > 0.0:
+					pixel.a *= 0.42
+					image.set_pixel(px, py, pixel)
 	return image
 
 
