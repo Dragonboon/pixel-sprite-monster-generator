@@ -93,6 +93,7 @@ func _build_ui() -> void:
 	heading.add_child(_label("SPECIES LAB  /  PROCEDURAL CREATURES", 24))
 	heading.add_child(_label("14 body plans  •  8 elements  •  deterministic genomes  •  experimental", 12, MUTED))
 	_button(header, "Legacy generator lab  ↗", _open_legacy)
+	_button(header, "Top-down 8-way Lab ↗", func() -> void: get_tree().change_scene_to_file("res://demo/topdown_lab.tscn"))
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
